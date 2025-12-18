@@ -192,6 +192,15 @@
         }
 
         // --- NAVIGATION ---
+        function renderLoading(msg) {
+            contentDiv.innerHTML = `
+                <div class="text-center w-full fade-in flex flex-col items-center h-full justify-center">
+                    <div class="loader mb-6 border-cyan-400"></div>
+                    <h2 class="text-xl font-bold mb-2">${msg}</h2>
+                </div>
+            `;
+        }
+
         function init() {
             renderMainMenu();
         }
