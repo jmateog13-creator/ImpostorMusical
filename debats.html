@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>La Majoria Mana 🗳️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f0a1e;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1,
+        h2,
+        .impact-text {
+            font-family: 'Anton', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .neon-red {
+            box-shadow: 0 0 15px #ef4444;
+            border-color: #ef4444;
+        }
+
+        .neon-blue {
+            box-shadow: 0 0 15px #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        .vs-circle {
+            background: linear-gradient(135deg, #ef4444 50%, #3b82f6 50%);
+            border: 4px solid white;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+
+        .bar-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            height: 40px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="flex flex-col w-full h-full relative">
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen"
+        class="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-sm">
+        <div
+            class="bg-black/50 p-8 rounded-2xl border-2 border-purple-500 shadow-[0_0_50px_rgba(168,85,247,0.4)] max-w-md w-full text-center">
+            <h1
+                class="text-5xl mb-2 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-blue-500 neon-text leading-tight">
+                La Majoria<br>Mana</h1>
+            <p class="text-gray-400 mb-8 font-bold">Endevina què pensa la classe!</p>
+
+            <div class="space-y-4">
+                <input id="username" type="text" placeholder="El teu nom"
+                    class="w-full bg-slate-800 border-2 border-slate-600 rounded-xl p-4 text-center text-xl text-white focus:border-purple-500 outline-none transition-colors">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="showHostSetup()"
+                        class="bg-purple-700 hover:bg-purple-600 py-4 rounded-xl font-bold transition-all hover:scale-105 shadow-lg">
+                        <i class="fas fa-tv block text-2xl mb-1"></i> Sóc Profe
+                    </button>
+                    <button onclick="showClientJoin()"
+                        class="bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold transition-all hover:scale-105 shadow-lg">
+                        <i class="fas fa-users block text-2xl mb-1"></i> Sóc Alumne
+                    </button>
+                </div>
+
+                <!-- Hidden Sub-forms -->
+                <div id="hostSetup" class="hidden mt-4 pt-4 border-t border-white/10 fade-in-up">
+                    <button onclick="initHost()"
+                        class="w-full bg-gradient-to-r from-red-600 to-blue-600 text-white font-black py-3 rounded-xl shadow-lg border-2 border-white/20">CREAR
+                        SALA</button>
+                </div>
+
+                <div id="clientJoin" class="hidden mt-4 pt-4 border-t border-white/10 fade-in-up">
+                    <input id="roomCode" placeholder="CODI DE SALA"
+                        class="w-full bg-black border border-slate-500 rounded-xl p-3 text-center text-2xl font-mono uppercase tracking-widest mb-3 focus:border-white">
+                    <button onclick="initClient()"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg">ENTRAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME UI -->
+    <div id="gameUI" class="hidden flex-col h-full w-full max-w-6xl mx-auto p-4">
+
+        <!-- HEADER -->
+        <div class="flex justify-between items-center mb-6 bg-white/5 p-3 rounded-xl border border-white/10">
+            <div class="flex items-center gap-4">
+                <div
+                    class="bg-purple-900/50 px-4 py-1 rounded text-xs font-bold uppercase tracking-widest text-purple-300">
+                    Sala: <span id="roomCodeDisp" class="text-white text-lg font-mono">????</span></div>
+                <div
+                    class="bg-blue-900/50 px-4 py-1 rounded text-xs font-bold uppercase tracking-widest text-blue-300 flex items-center gap-2">
+                    <i class="fas fa-users"></i> <span id="playerCount">0</span>
+                </div>
+            </div>
+            <button onclick="location.reload()" class="text-red-500 hover:text-white transition-colors"><i
+                    class="fas fa-power-off"></i> Sortir</button>
+        </div>
+
+        <!-- LOBBY VIEW -->
+        <div id="lobbyView" class="flex-1 flex flex-col items-center justify-center text-center">
+            <div class="text-8xl mb-4 animate-bounce">🗳️</div>
+            <h2 class="text-4xl font-bold mb-4">Esperant jugadors...</h2>
+            <div id="playerGrid" class="flex flex-wrap justify-center gap-3 w-full max-w-lg mb-8">
+                <!-- Players injected here -->
+            </div>
+            <div id="hostControls" class="hidden">
+                <p class="text-gray-400 mb-4">Quan estigueu tots, comença!</p>
+                <button onclick="startGame()"
+                    class="px-8 py-4 bg-green-500 hover:bg-green-400 text-black font-black text-2xl rounded-full shadow-[0_0_30px_rgba(34,197,94,0.6)] hover:scale-105 transition-transform">INICIAR
+                    DEBAT</button>
+            </div>
+            <div id="clientWait" class="hidden text-xl text-purple-300 animate-pulse">Mira la pantalla del profe...
+            </div>
+        </div>
+
+        <!-- QUESTION VIEW -->
+        <div id="questionView" class="hidden flex-1 flex flex-col items-center justify-center relative">
+
+            <div class="absolute top-0 right-0 left-0 flex justify-center -mt-8 pointer-events-none">
+                <div id="timerDisplay"
+                    class="bg-black/80 font-mono text-4xl px-6 py-2 rounded-b-xl border border-t-0 border-white/20 shadow-lg text-yellow-400">
+                    20</div>
+            </div>
+
+            <div class="w-full max-w-4xl text-center z-10">
+                <h3 class="text-slate-400 font-bold uppercase tracking-[0.2em] mb-4 text-sm">Pregunta de Debat</h3>
+                <h1 id="qText" class="text-3xl md:text-5xl lg:text-6xl font-black leading-tight drop-shadow-2xl mb-12">
+                    Reggaeton vs Trap
+                </h1>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl mx-auto relative">
+                    <!-- VS Badge -->
+                    <div
+                        class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full vs-circle flex items-center justify-center z-20 font-black text-2xl italic tracking-tighter">
+                        VS</div>
+
+                    <!-- Option A -->
+                    <button id="btnA" onclick="vote('A')"
+                        class="group relative bg-slate-800/80 hover:bg-red-900/40 border-4 border-slate-700 hover:border-red-500 rounded-3xl p-8 flex flex-col items-center gap-4 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(239,68,68,0.3)] min-h-[200px] justify-center">
+                        <div class="text-6xl group-hover:scale-110 transition-transform">🅰️</div>
+                        <div id="optAText" class="text-2xl font-bold text-gray-300 group-hover:text-white">Opció A</div>
+                        <div id="myVoteBadgeA"
+                            class="hidden absolute top-4 right-4 bg-red-600 text-xs px-2 py-1 rounded-full font-bold uppercase">
+                            Votat</div>
+                    </button>
+
+                    <!-- Option B -->
+                    <button id="btnB" onclick="vote('B')"
+                        class="group relative bg-slate-800/80 hover:bg-blue-900/40 border-4 border-slate-700 hover:border-blue-500 rounded-3xl p-8 flex flex-col items-center gap-4 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(59,130,246,0.3)] min-h-[200px] justify-center">
+                        <div class="text-6xl group-hover:scale-110 transition-transform">🅱️</div>
+                        <div id="optBText" class="text-2xl font-bold text-gray-300 group-hover:text-white">Opció B</div>
+                        <div id="myVoteBadgeB"
+                            class="hidden absolute top-4 right-4 bg-blue-600 text-xs px-2 py-1 rounded-full font-bold uppercase">
+                            Votat</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESULTS OVERLAY (HOST) -->
+            <div id="resultsOverlay"
+                class="hidden absolute bottom-8 left-0 right-0 max-w-3xl mx-auto bg-black/90 p-6 rounded-2xl border border-white/20 backdrop-blur-md fade-in-up">
+                <h2 class="text-center text-2xl mb-4 text-purple-300">RESULTATS DE LA CLASSE</h2>
+
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1">
+                        <span class="font-bold text-red-500">A: <span id="labelResA"></span></span>
+                        <span id="pctA" class="font-mono">0%</span>
+                    </div>
+                    <div class="bar-container relative">
+                        <div id="barA" class="bar-fill bg-gradient-to-r from-red-600 to-red-400 absolute left-0"
+                            style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="flex justify-between mb-1">
+                        <span class="font-bold text-blue-500">B: <span id="labelResB"></span></span>
+                        <span id="pctB" class="font-mono">0%</span>
+                    </div>
+                    <div class="bar-container relative">
+                        <div id="barB" class="bar-fill bg-gradient-to-r from-blue-600 to-blue-400 absolute left-0"
+                            style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <div id="resultMsg" class="text-xl font-bold mb-4">La majoria ha triat...</div>
+                    <button id="nextBtn" onclick="nextQuestion()"
+                        class="bg-white text-black font-bold px-6 py-2 rounded-full hover:bg-gray-200">Següent Pregunta
+                        <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RANKING VIEW -->
+        <div id="rankingView" class="hidden flex-1 flex flex-col items-center justify-center">
+            <h2
+                class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-600 mb-8">
+                🏆 RÀNQUING FINAL 🏆</h2>
+            <div id="rankingList" class="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 space-y-3">
+            </div>
+            <button onclick="location.reload()"
+                class="mt-8 bg-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-600">Tornar al Menú</button>
+        </div>
+
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast"
+        class="fixed top-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-purple-500 text-white px-6 py-3 rounded-full shadow-2xl opacity-0 pointer-events-none transition-opacity z-[100] font-bold">
+        Msg</div>
+
+    <script>
+        // --- DATA ---
+        const QUESTIONS = [
+            { q: "Reggaeton vs Trap: Quin ritme et fa ballar més?", a: "Reggaeton", b: "Trap" },
+            { q: "Bad Bunny vs Quevedo: Qui és el rei ara mateix?", a: "Bad Bunny", b: "Quevedo" },
+            { q: "K-Pop: Art o Producte Comercial?", a: "Art", b: "Producte" },
+            { q: "Auto-Tune: Eina creativa o parany?", a: "Creativa", b: "Parany" },
+            { q: "TikTok: Ha millorat o destrossat la música?", a: "Millorat", b: "Destrossat" },
+            { q: "Concerts: Gravar amb mòbil o viure el moment?", a: "Gravar", b: "Viure" },
+            { q: "Rosalia: 'Motomami' o Flamenca?", a: "Motomami", b: "Flamenca" },
+            { q: "Eurovisió: Festival seriós o circ de frikis?", a: "Seriós", b: "Circ" },
+            { q: "Lletres: Importa el missatge o el ritme?", a: "Missatge", b: "Ritme" },
+            { q: "Spotify: Shuffle o Àlbum sencer?", a: "Shuffle", b: "Àlbum" },
+            { q: "Videoclips: Importants o passats de moda?", a: "Importants", b: "Passats" },
+            { q: "Música en català: Moda o Realitat?", a: "Moda", b: "Realitat" },
+            { q: "Plataformes: Spotify o YouTube Music?", a: "Spotify", b: "YouTube" },
+            { q: "Auriculars: Grans (Diadema) o Petits?", a: "Grans", b: "Petits" },
+            { q: "Taylor Swift: Geni Màrqueting o Musical?", a: "Màrqueting", b: "Musical" },
+            { q: "Col·laboracions (Feat): Art o Diners?", a: "Art", b: "Diners" },
+            { q: "Concerts Holograma (IA): Futur o Estafa?", a: "Futur", b: "Estafa" },
+            { q: "Música Trista: Per enfonsar-se o animar-se?", a: "Enfonsar", b: "Animar" },
+            { q: "Trap en català: Sí o No?", a: "SÍ", b: "NO" },
+            { q: "Guitarra: Elèctrica o Espanyola?", a: "Elèctrica", b: "Espanyola" }
+        ];
+
+        // --- STATE ---
+        const app = {
+            peer: null, conn: null, myId: null, isHost: false, roomId: '',
+            players: [], // {id, name, score, vote}
+            currentQIndex: -1,
+            timer: 20, timerIdx: null,
+            state: 'LOBBY'
+        };
+
+        // --- SETUP ---
+        function showHostSetup() { document.getElementById('hostSetup').classList.remove('hidden'); document.getElementById('clientJoin').classList.add('hidden'); }
+        function showClientJoin() { document.getElementById('clientJoin').classList.remove('hidden'); document.getElementById('hostSetup').classList.add('hidden'); }
+
+        function initHost() {
+            const name = document.getElementById('username').value.trim() || 'Moderador';
+            app.isHost = true;
+            app.roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+            app.peer = new Peer("DEBAT-" + app.roomId);
+            app.peer.on('open', id => {
+                app.myId = id;
+                enterGame();
+                // Add Host as a player
+                app.players.push({ id: id, name: name, score: 0, vote: null, conn: null }); // Conn null implies Host
+                document.getElementById('hostControls').classList.remove('hidden');
+                updatePlayerGrid();
+            });
+            app.peer.on('connection', conn => {
+                conn.on('data', d => handleHostData(conn, d));
+                conn.on('close', () => removePlayer(conn.peer));
+                app.players.push({ id: conn.peer, name: 'Joining...', score: 0, vote: null, conn: conn });
+            });
+        }
+
+        function initClient() {
+            const name = document.getElementById('username').value.trim();
+            if (!name) return showToast("Posa el teu nom!");
+            const code = document.getElementById('roomCode').value.trim().toUpperCase();
+            if (!code) return showToast("Falta el Codi!");
+
+            app.peer = new Peer();
+            app.peer.on('open', id => {
+                app.myId = id;
+                app.conn = app.peer.connect("DEBAT-" + code);
+                app.conn.on('open', () => {
+                    app.conn.send({ type: 'JOIN', name });
+                    enterGame();
+                    document.getElementById('clientWait').classList.remove('hidden');
+                });
+                app.conn.on('data', handleClientData);
+                app.conn.on('close', () => { showToast("Connexió perduda"); setTimeout(() => location.reload(), 2000); });
+            });
+        }
+
+        function enterGame() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('gameUI').classList.remove('hidden');
+            document.getElementById('gameUI').classList.add('flex');
+            document.getElementById('roomCodeDisp').innerText = app.roomId;
+        }
+
+        // --- LOGIC ---
+        function handleHostData(conn, data) {
+            const p = app.players.find(x => x.id === conn.peer);
+            if (data.type === 'JOIN') {
+                if (p) p.name = data.name;
+                broadcastUpdate();
+                // If game in progress, send current Q
+                if (app.state === 'VOTING') {
+                    p.conn.send({ type: 'NEW_Q', q: QUESTIONS[app.currentQIndex], time: app.timer });
+                }
+            }
+            if (data.type === 'VOTE') {
+                if (p) p.vote = data.opt;
+                // Host visual feedback check?
+            }
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'UPDATE') {
+                app.players = data.list;
+                document.getElementById('playerGrid').innerHTML = app.players.map(pl =>
+                    `<div class="bg-white/10 px-3 py-1 rounded text-sm">${pl.name} <span class="text-yellow-400 font-bold">${pl.score}</span></div>`
+                ).join('');
+                document.getElementById('playerCount').innerText = app.players.length;
+            }
+            if (data.type === 'NEW_Q') {
+                showQuestion(data.q);
+                // Sync timer visual
+                app.timer = data.time || 20;
+            }
+            if (data.type === 'SHOW_RESULTS') {
+                showResults(data.stats, data.winner);
+            }
+            if (data.type === 'GAME_END') {
+                showRanking();
+            }
+        }
+
+        function broadcastUpdate() {
+            const list = app.players.map(p => ({ id: p.id, name: p.name, score: p.score }));
+            app.players.forEach(p => { if (p.conn && p.conn.open) p.conn.send({ type: 'UPDATE', list }); });
+            document.getElementById('playerGrid').innerHTML = list.map(pl =>
+                `<div class="bg-white/10 px-3 py-1 rounded text-sm">${pl.name} <span class="text-yellow-400 font-bold">${pl.score}</span></div>`
+            ).join('');
+            document.getElementById('playerCount').innerText = list.length;
+        }
+
+        function updatePlayerGrid() {
+            // Host local update mostly
+        }
+
+        function startGame() {
+            document.getElementById('hostControls').classList.add('hidden');
+            document.getElementById('lobbyView').classList.add('hidden');
+            // Random shuffle questions? No, linear is fine.
+            app.currentQIndex = -1;
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            app.currentQIndex++;
+            if (app.currentQIndex >= QUESTIONS.length) {
+                // Game Over
+                broadcast({ type: 'GAME_END' });
+                showRanking();
+                return;
+            }
+
+            const q = QUESTIONS[app.currentQIndex];
+            app.state = 'VOTING';
+            app.players.forEach(p => p.vote = null); // Reset votes
+
+            // Reset UI
+            document.getElementById('questionView').classList.remove('hidden');
+            document.getElementById('resultsOverlay').classList.add('hidden');
+
+            app.timer = 20;
+            broadcast({ type: 'NEW_Q', q, time: 20 });
+            showQuestion(q); // For host too
+
+            // Start Timer
+            if (app.timerIdx) clearInterval(app.timerIdx);
+            app.timerIdx = setInterval(() => {
+                app.timer--;
+                document.getElementById('timerDisplay').innerText = app.timer;
+                if (app.timer <= 0) {
+                    clearInterval(app.timerIdx);
+                    if (app.isHost) calculateResults();
+                }
+            }, 1000);
+        }
+
+        function showQuestion(q) {
+            document.getElementById('lobbyView').classList.add('hidden');
+            document.getElementById('questionView').classList.remove('hidden');
+            document.getElementById('rankingView').classList.add('hidden');
+
+            document.getElementById('qText').innerText = q.q;
+            document.getElementById('optAText').innerText = q.a;
+            document.getElementById('optBText').innerText = q.b;
+
+            // Allow voting
+            document.getElementById('btnA').disabled = false;
+            document.getElementById('btnB').disabled = false;
+            document.getElementById('btnA').classList.remove('opacity-50', 'pointer-events-none');
+            document.getElementById('btnB').classList.remove('opacity-50', 'pointer-events-none');
+
+            // Reset Badges
+            document.getElementById('myVoteBadgeA').classList.add('hidden');
+            document.getElementById('myVoteBadgeB').classList.add('hidden');
+        }
+
+        function vote(opt) {
+            // UI Feedback
+            if (opt === 'A') {
+                document.getElementById('myVoteBadgeA').classList.remove('hidden');
+                document.getElementById('btnB').classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                document.getElementById('myVoteBadgeB').classList.remove('hidden');
+                document.getElementById('btnA').classList.add('opacity-50', 'pointer-events-none');
+            }
+
+            document.getElementById('btnA').onclick = null;
+            document.getElementById('btnB').onclick = null;
+
+            if (app.isHost) {
+                // Host local vote
+                const me = app.players.find(p => p.id === app.myId);
+                if (me) me.vote = opt;
+            } else {
+                app.conn.send({ type: 'VOTE', opt });
+            }
+        }
+
+        function calculateResults() {
+            // Count votes
+            const votesA = app.players.filter(p => p.vote === 'A').length;
+            const votesB = app.players.filter(p => p.vote === 'B').length;
+            const total = Math.max(1, votesA + votesB); // Avoid div0
+
+            const pctA = Math.round((votesA / total) * 100);
+            const pctB = Math.round((votesB / total) * 100);
+
+            // Determine Majority
+            let winner = 'draw';
+            if (votesA > votesB) winner = 'A';
+            if (votesB > votesA) winner = 'B';
+
+            // Add Points
+            if (winner !== 'draw') {
+                app.players.forEach(p => {
+                    if (p.vote === winner) p.score += 100;
+                });
+            } else {
+                // If draw, maybe nobody gets points? Or everyone? 
+                // Let's say: In draw, nobody wins.
+            }
+
+            broadcastUpdate(); // Sync scores
+
+            const q = QUESTIONS[app.currentQIndex];
+            const stats = { pctA, pctB, winner, labelA: q.a, labelB: q.b };
+
+            broadcast({ type: 'SHOW_RESULTS', stats });
+            showResults(stats); // Host UI
+        }
+
+        function showResults(stats) {
+            document.getElementById('resultsOverlay').classList.remove('hidden');
+
+            document.getElementById('labelResA').innerText = stats.labelA;
+            document.getElementById('labelResB').innerText = stats.labelB;
+
+            document.getElementById('pctA').innerText = stats.pctA + '%';
+            document.getElementById('pctB').innerText = stats.pctB + '%';
+
+            // Animate bars
+            setTimeout(() => {
+                document.getElementById('barA').style.width = stats.pctA + '%';
+                document.getElementById('barB').style.width = stats.pctB + '%';
+            }, 100);
+
+            const msg = document.getElementById('resultMsg');
+            if (stats.winner === 'A') {
+                msg.innerText = `La majoria tria: ${stats.labelA}! 🅰️`;
+                msg.className = "text-xl font-bold mb-4 text-red-400";
+            } else if (stats.winner === 'B') {
+                msg.innerText = `La majoria tria: ${stats.labelB}! 🅱️`;
+                msg.className = "text-xl font-bold mb-4 text-blue-400";
+            } else {
+                msg.innerText = "EMPAT TÈCNIC! ⚖️";
+                msg.className = "text-xl font-bold mb-4 text-gray-300";
+            }
+
+            // Only host sees Next button
+            if (!app.isHost) document.getElementById('nextBtn').classList.add('hidden');
+            else document.getElementById('nextBtn').classList.remove('hidden');
+        }
+
+        function showRanking() {
+            document.getElementById('questionView').classList.add('hidden');
+            document.getElementById('rankingView').classList.remove('hidden');
+
+            const sorted = [...app.players].sort((a, b) => b.score - a.score);
+            document.getElementById('rankingList').innerHTML = sorted.map((p, i) => `
+                <div class="flex justify-between items-center bg-white/10 p-3 rounded-lg border-l-4 ${i === 0 ? 'border-yellow-400 bg-yellow-400/10' : (i === 1 ? 'border-gray-300' : 'border-orange-700')}">
+                    <div class="font-bold text-lg"><span class="mr-2">${i + 1}.</span> ${p.name}</div>
+                    <div class="text-2xl font-black">${p.score}</div>
+                </div>
+            `).join('');
+        }
+
+        function broadcast(msg) {
+            app.players.forEach(p => { if (p.conn && p.conn.open) p.conn.send(msg); });
+        }
+        function removePlayer(id) { app.players = app.players.filter(p => p.id !== id); broadcastUpdate(); }
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.classList.remove('opacity-0');
+            setTimeout(() => t.classList.add('opacity-0'), 2000);
+        }
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STOP Musical 🛑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col h-full w-full bg-slate-950 text-slate-200">
+
+    <!-- LOGIN -->
+    <div id="login" class="absolute inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-slate-700">
+            <div class="text-6xl mb-4">🛑</div>
+            <h1 class="text-4xl font-black mb-1 text-white uppercase tracking-wider">STOP</h1>
+            <h2 class="text-xl text-rose-400 font-bold mb-6">Musical</h2>
+
+            <input id="myName" type="text" placeholder="El teu nom"
+                class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-white text-center text-xl mb-4 focus:border-rose-500 outline-none transition-all">
+
+            <!-- HOST CONTROLS UI -->
+            <div id="hostSettings"
+                class="hidden mb-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700 animate-fade-in text-left">
+                <label class="text-xs text-slate-400 uppercase font-bold block mb-2">Nombre de Rondes:</label>
+                <div class="flex items-center gap-3">
+                    <input type="range" min="1" max="10" value="5" id="roundsInput"
+                        class="flex-1 accent-yellow-400 cursor-pointer"
+                        oninput="document.getElementById('rVal').innerText=this.value">
+                    <span id="rVal" class="text-2xl font-bold text-yellow-400 w-6 text-center">5</span>
+                </div>
+                <button onclick="confirmHost()"
+                    class="mt-4 w-full bg-green-500 hover:bg-green-400 text-slate-900 font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95">
+                    OBRIR SALA
+                </button>
+            </div>
+
+            <div id="mainButtons" class="grid grid-cols-2 gap-3 mb-2">
+                <button onclick="showHostMenu()"
+                    class="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3 rounded-xl transition-all shadow-lg active:translate-y-1">
+                    CREAR SALA
+                </button>
+                <input id="joinCode" placeholder="CODI"
+                    class="bg-black/30 border border-slate-600 rounded-xl text-center uppercase font-mono text-xl focus:border-yellow-400 outline-none">
+            </div>
+            <button onclick="initClient()"
+                class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl shadow-lg mt-2 transition-all active:translate-y-1">
+                UNIR-SE
+            </button>
+        </div>
+    </div>
+
+    <!-- GAME UI -->
+    <div id="game" class="hidden flex-col h-full max-w-5xl mx-auto w-full p-2 sm:p-4">
+
+        <!-- HEADER -->
+        <div
+            class="flex justify-between items-center bg-slate-800/80 p-3 rounded-xl backdrop-blur-sm border border-slate-700 shadow-lg mb-2 sm:mb-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-900 px-4 py-2 rounded-lg border border-slate-700 shadow-inner">
+                    <div class="text-[10px] text-slate-400 uppercase font-bold text-center">Lletra</div>
+                    <div id="letterDisplay" class="text-4xl font-black text-rose-500 text-center w-8 leading-none">?
+                    </div>
+                </div>
+                <div class="hidden sm:block">
+                    <div class="text-xs text-slate-500 font-bold uppercase">Ronda <span id="roundNum"
+                            class="text-white">1</span> / <span id="maxRoundsDisp" class="text-slate-400">5</span></div>
+                </div>
+            </div>
+            <div class="font-black text-xl sm:text-3xl text-white tracking-widest uppercase italic"><span
+                    class="text-rose-600">STOP</span> Musical</div>
+            <div class="w-12"></div>
+        </div>
+
+        <!-- MAIN CONTENT AREA -->
+        <div
+            class="flex-1 relative overflow-hidden bg-slate-900 rounded-2xl border border-slate-800 shadow-inner flex flex-col justify-center items-center p-4">
+
+            <!-- WAITING / LOBBY -->
+            <div id="lobbyView" class="text-center w-full max-w-md hidden">
+                <div class="text-2xl font-bold mb-4 text-slate-300">Codi de Sala: <span id="roomCodeDisp"
+                        class="font-mono text-yellow-400 bg-black/30 px-3 py-1 rounded select-all tracking-widest"></span>
+                </div>
+                <div id="playerList" class="flex flex-wrap justify-center gap-2 mb-8"></div>
+                <div id="hostStartBtn" class="hidden">
+                    <button onclick="startRound()"
+                        class="w-full bg-green-500 hover:bg-green-400 text-slate-900 text-2xl font-black py-4 rounded-xl shadow-lg transform hover:scale-105 transition-all">
+                        COMENÇAR JOC!
+                    </button>
+                </div>
+                <div id="clientWaitMsg" class="hidden text-slate-400 animate-pulse text-xl">Esperant al profe...</div>
+            </div>
+
+            <!-- GAMEPLAY (INPUTS) -->
+            <div id="playView" class="hidden w-full max-w-md flex flex-col gap-3">
+                <div class="text-center text-slate-500 text-sm mb-2">Omple les categories amb la lletra <span
+                        class="font-bold text-rose-400 currentLetterSpan"></span></div>
+
+                <!-- Category Inputs -->
+                <div
+                    class="bg-slate-800 p-3 rounded-xl border border-slate-700 focus-within:border-rose-500 transition-colors">
+                    <label class="block text-xs uppercase font-bold text-rose-300 mb-1 ml-1"><i
+                            class="fas fa-music mr-1"></i> Cançó</label>
+                    <input type="text" data-cat="song"
+                        class="game-input w-full bg-slate-900 text-white font-bold text-lg p-3 rounded-lg border border-slate-600 focus:border-rose-400 focus:ring-0 outline-none"
+                        placeholder="...">
+                </div>
+
+                <div
+                    class="bg-slate-800 p-3 rounded-xl border border-slate-700 focus-within:border-rose-500 transition-colors">
+                    <label class="block text-xs uppercase font-bold text-rose-300 mb-1 ml-1"><i
+                            class="fas fa-microphone-alt mr-1"></i> Cantant / Grup</label>
+                    <input type="text" data-cat="artist"
+                        class="game-input w-full bg-slate-900 text-white font-bold text-lg p-3 rounded-lg border border-slate-600 focus:border-rose-400 focus:ring-0 outline-none"
+                        placeholder="...">
+                </div>
+
+                <div
+                    class="bg-slate-800 p-3 rounded-xl border border-slate-700 focus-within:border-rose-500 transition-colors">
+                    <label class="block text-xs uppercase font-bold text-rose-300 mb-1 ml-1"><i
+                            class="fas fa-guitar mr-1"></i> Estil Musical</label>
+                    <input type="text" data-cat="style"
+                        class="game-input w-full bg-slate-900 text-white font-bold text-lg p-3 rounded-lg border border-slate-600 focus:border-rose-400 focus:ring-0 outline-none"
+                        placeholder="...">
+                </div>
+
+                <div
+                    class="bg-slate-800 p-3 rounded-xl border border-slate-700 focus-within:border-rose-500 transition-colors">
+                    <label class="block text-xs uppercase font-bold text-rose-300 mb-1 ml-1"><i
+                            class="fas fa-globe-americas mr-1"></i> Ciutat</label>
+                    <input type="text" data-cat="city"
+                        class="game-input w-full bg-slate-900 text-white font-bold text-lg p-3 rounded-lg border border-slate-600 focus:border-rose-400 focus:ring-0 outline-none"
+                        placeholder="...">
+                </div>
+
+                <button onclick="callStop()"
+                    class="mt-4 w-full bg-rose-600 hover:bg-rose-500 text-white font-black text-3xl py-4 rounded-2xl shadow-lg transform hover:scale-105 active:scale-95 transition-all">
+                    🛑 STOP!
+                </button>
+            </div>
+
+            <!-- REVIEW / RESULTS -->
+            <div id="resultsView" class="hidden w-full h-full flex flex-col">
+                <div class="flex justify-between items-center mb-4 px-2">
+                    <h3 class="text-2xl font-bold text-yellow-300">Revisió (Host)</h3>
+                    <div class="text-xs text-slate-400">Clic per canviar estat: ✅ -> ⚠️ -> ❌</div>
+                </div>
+
+                <div id="reviewList" class="flex-1 overflow-y-auto custom-scroll space-y-4 pr-1 mb-4"></div>
+
+                <div id="hostNextBtn" class="hidden pt-4 border-t border-slate-700">
+                    <button onclick="finalizeRoundReview()"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 text-lg rounded-xl shadow-lg transition-all">
+                        CONFIRMAR PUNTS I SEGUIR <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+                <div id="clientWaitingReview"
+                    class="hidden text-center text-slate-400 py-8 italic uppercase tracking-wider animate-pulse">
+                    El profe està corregint els exàmens...
+                </div>
+            </div>
+
+            <!-- FINAL RANKING -->
+            <div id="rankingView" class="hidden text-center w-full max-w-sm">
+                <i class="fas fa-trophy text-6xl text-yellow-400 mb-4 drop-shadow-lg"></i>
+                <h2 class="text-4xl font-black text-white mb-8">Classificació Final</h2>
+                <div id="finalScores" class="bg-slate-800 rounded-xl p-4 space-y-2 mb-6 border border-slate-700"></div>
+                <button onclick="location.reload()"
+                    class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-8 rounded-full transition-all">
+                    Tornar a l'Inici
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast"
+        class="fixed top-24 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-8 py-4 rounded-full shadow-2xl pointer-events-none opacity-0 transition-opacity z-50 font-bold border border-slate-700 backdrop-blur-md">
+        Msg</div>
+
+    <script>
+        // --- CONFIG ---
+        const LETTERS = "ABCDEFGHIJLMNOPRSTV";
+
+        // --- STATE ---
+        const app = {
+            peer: null, conn: null, myId: null, myName: '', isHost: false, roomId: '',
+            players: [],
+            gameState: 'LOGIN',
+            currentLetter: '?', round: 1, maxRounds: 5,
+            reviewData: []
+        };
+
+        // --- SETUP ---
+        function showHostMenu() {
+            document.getElementById('mainButtons').classList.add('hidden');
+            document.getElementById('hostSettings').classList.remove('hidden');
+        }
+
+        function confirmHost() {
+            app.maxRounds = parseInt(document.getElementById('roundsInput').value);
+            initHost();
+        }
+
+        function initHost() { setup('host'); }
+        function initClient() { setup('client'); }
+
+        function setup(mode) {
+            const name = document.getElementById('myName').value.trim();
+            if (!name) return showToast("Posa't un nom!");
+            app.myName = name;
+            app.isHost = (mode === 'host');
+
+            document.getElementById('login').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('game').classList.add('flex');
+
+            // Sync Round Display
+            document.getElementById('maxRoundsDisp').innerText = app.isHost ? app.maxRounds : '?';
+
+            if (app.isHost) {
+                app.roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                app.peer = new Peer("STOP-" + app.roomId);
+                app.peer.on('open', id => {
+                    app.myId = id;
+                    app.players = [{ id, name, score: 0 }];
+                    updateLobby();
+                    document.getElementById('hostStartBtn').classList.remove('hidden');
+                });
+                app.peer.on('connection', c => {
+                    c.on('data', d => handleHostData(c, d));
+                    c.on('close', () => removePlayer(c.peer));
+                    app.players.push({ id: c.peer, name: 'Joining...', score: 0, conn: c });
+                });
+            } else {
+                const code = document.getElementById('joinCode').value.trim().toUpperCase();
+                if (code.length < 3) return showToast("Codi incorrecte");
+                app.peer = new Peer();
+                app.peer.on('open', id => {
+                    app.myId = id;
+                    app.conn = app.peer.connect("STOP-" + code);
+                    app.conn.on('open', () => {
+                        app.conn.send({ type: 'JOIN', name });
+                        document.getElementById('clientWaitMsg').classList.remove('hidden');
+                    });
+                    app.conn.on('data', handleClientData);
+                    app.conn.on('close', () => alert("Connexió perduda"));
+                });
+            }
+            switchView('lobbyView');
+        }
+
+        // --- DATA HANDLERS ---
+        function handleHostData(conn, data) {
+            const p = app.players.find(x => x.id === conn.peer);
+
+            if (data.type === 'JOIN') {
+                if (p) p.name = data.name;
+                broadcast({ type: 'UPDATE_PLAYERS', list: cleanPlayerList(), maxRounds: app.maxRounds });
+                updateLobby();
+            }
+            if (data.type === 'STOP_CALLED') {
+                if (app.gameState !== 'PLAYING') return;
+                p.answers = data.answers;
+                handleStopCall(p);
+            }
+            if (data.type === 'SUBMIT_ANSWERS') {
+                if (p) p.answers = data.answers;
+            }
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'UPDATE_PLAYERS') {
+                app.players = data.list;
+                if (data.maxRounds) { app.maxRounds = data.maxRounds; document.getElementById('maxRoundsDisp').innerText = app.maxRounds; }
+                updateLobby();
+            }
+            if (data.type === 'START_ROUND') { app.currentLetter = data.letter; app.round = data.round; startRoundUI(); }
+            if (data.type === 'STOP_EFFECT') { showStopEffect(data.winnerName); sendAnswers(); }
+            if (data.type === 'SHOW_REVIEW') { app.players = data.fullData; showClientReviewUI(); }
+            if (data.type === 'GAME_OVER') { app.players = data.list; showRanking(); }
+        }
+
+        function broadcast(msg) {
+            app.players.forEach(p => { if (p.conn && p.conn.open) p.conn.send(msg); });
+        }
+
+        // --- GAME LOGIC (HOST) ---
+        function startRound() {
+            app.gameState = 'PLAYING';
+            app.currentLetter = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+            const data = { type: 'START_ROUND', letter: app.currentLetter, round: app.round };
+            broadcast(data);
+            startRoundUI();
+        }
+
+        function handleStopCall(winner) {
+            app.gameState = 'STOPPED';
+            broadcast({ type: 'STOP_EFFECT', winnerName: winner.name });
+            showStopEffect(winner.name);
+
+            const myInputs = document.querySelectorAll('#playView input');
+            const myAns = {};
+            myInputs.forEach(i => myAns[i.dataset.cat] = i.value.trim());
+            const me = app.players.find(p => p.id === app.myId);
+            if (me) me.answers = myAns;
+
+            showToast("Recopilant respostes...");
+            setTimeout(() => {
+                const data = { type: 'SHOW_REVIEW', fullData: cleanPlayerList() };
+                broadcast(data);
+                initHostReviewUI();
+            }, 3000);
+        }
+
+        // --- REVIEW LOGIC ---
+        function initHostReviewUI() {
+            switchView('resultsView');
+            document.getElementById('hostNextBtn').classList.remove('hidden');
+            document.getElementById('clientWaitingReview').classList.add('hidden');
+
+            const list = document.getElementById('reviewList');
+            list.innerHTML = '';
+
+            app.reviewData = app.players.map(p => {
+                const ans = p.answers || {};
+                return {
+                    id: p.id,
+                    name: p.name,
+                    cats: {
+                        song: { val: ans.song || '', status: autoCheck(ans.song) },
+                        artist: { val: ans.artist || '', status: autoCheck(ans.artist) },
+                        style: { val: ans.style || '', status: autoCheck(ans.style) },
+                        city: { val: ans.city || '', status: autoCheck(ans.city) }
+                    }
+                };
+            });
+            renderHostReviewList();
+        }
+
+        function autoCheck(val) {
+            if (!val || val.length < 1 || val.toUpperCase().charAt(0) !== app.currentLetter) return 0;
+            return 2;
+        }
+
+        function renderHostReviewList() {
+            const list = document.getElementById('reviewList');
+            list.innerHTML = app.reviewData.map((p, idx) => `
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <div class="font-bold text-yellow-400 mb-2 border-b border-slate-700 pb-1">${p.name}</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        ${renderReviewItem(idx, 'song', '🎵 Cançó', p.cats.song)}
+                        ${renderReviewItem(idx, 'artist', '🎤 Cantant', p.cats.artist)}
+                        ${renderReviewItem(idx, 'style', '🎸 Estil', p.cats.style)}
+                        ${renderReviewItem(idx, 'city', '🌍 Ciutat', p.cats.city)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderReviewItem(pIdx, catKey, label, item) {
+            const statusColors = ['bg-red-500/20 border-red-500 text-red-300', 'bg-yellow-500/20 border-yellow-500 text-yellow-300', 'bg-green-500/20 border-green-500 text-green-300'];
+            const icons = ['❌', '⚠️', '✅'];
+
+            return `
+            <div onclick="toggleStatus(${pIdx}, '${catKey}')" class="cursor-pointer border-l-4 p-2 rounded ${statusColors[item.status]} hover:brightness-110 transition-all select-none">
+                <div class="flex justify-between items-center text-xs opacity-70 mb-1">
+                    <span>${label}</span>
+                    <span>${icons[item.status]}</span>
+                </div>
+                <div class="font-bold text-lg truncate">${item.val || '-'}</div>
+            </div>`;
+        }
+
+        window.toggleStatus = function (pIdx, catKey) {
+            const item = app.reviewData[pIdx].cats[catKey];
+            item.status = (item.status === 0) ? 2 : item.status - 1;
+            renderHostReviewList();
+        }
+
+        window.finalizeRoundReview = function () {
+            // Commit scores
+            app.reviewData.forEach(rd => {
+                const p = app.players.find(x => x.id === rd.id);
+                if (p) {
+                    let pts = 0;
+                    Object.values(rd.cats).forEach(c => {
+                        if (c.status === 2) pts += 10;
+                        if (c.status === 1) pts += 5;
+                    });
+                    p.score += pts;
+                }
+            });
+
+            if (app.round < app.maxRounds) {
+                app.round++;
+                broadcast({ type: 'UPDATE_PLAYERS', list: cleanPlayerList(), maxRounds: app.maxRounds });
+                updateLobby();
+                switchView('lobbyView');
+            } else {
+                broadcast({ type: 'GAME_OVER', list: cleanPlayerList() });
+                showRanking();
+            }
+        }
+
+        function showClientReviewUI() {
+            switchView('resultsView');
+            document.getElementById('hostNextBtn').classList.add('hidden');
+            document.getElementById('clientWaitingReview').classList.remove('hidden');
+            document.getElementById('reviewList').innerHTML = '';
+        }
+
+        // --- COMMON UI ---
+        function switchView(id) {
+            ['lobbyView', 'playView', 'resultsView', 'rankingView'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function updateLobby() {
+            document.getElementById('roomCodeDisp').innerText = app.roomId;
+            const div = document.getElementById('playerList');
+            div.innerHTML = app.players.map(p =>
+                `<div class="bg-slate-700 px-3 py-1 rounded-full text-sm font-bold border border-slate-600 flex items-center gap-2 text-slate-200">
+                    <span>${p.name}</span>
+                    <span class="bg-black/30 px-2 rounded-full text-yellow-400 text-xs">${p.score}pts</span>
+                 </div>`
+            ).join('');
+        }
+
+        function startRoundUI() {
+            document.getElementById('letterDisplay').innerText = app.currentLetter;
+            document.getElementById('roundNum').innerText = app.round;
+            document.querySelectorAll('.currentLetterSpan').forEach(s => s.innerText = app.currentLetter);
+            document.querySelectorAll('#playView input').forEach(i => { i.value = ''; i.disabled = false; });
+            switchView('playView');
+        }
+
+        function callStop() {
+            const inputs = document.querySelectorAll('#playView input');
+            let allFilled = true;
+            inputs.forEach(i => {
+                const val = i.value.trim();
+                if (val.length < 1 || val.toUpperCase().charAt(0) !== app.currentLetter) allFilled = false;
+            });
+            if (!allFilled) { showToast(`Revisa: Tot ha de començar per ${app.currentLetter}`); return; }
+
+            if (app.isHost) handleStopCall(app.players.find(p => p.id === app.myId));
+            else app.conn.send({ type: 'STOP_CALLED', answers: getMyAns() });
+        }
+
+        function sendAnswers() {
+            if (!app.isHost) app.conn.send({ type: 'SUBMIT_ANSWERS', answers: getMyAns() });
+        }
+        function getMyAns() {
+            const inputs = document.querySelectorAll('#playView input');
+            const ans = {};
+            inputs.forEach(i => ans[i.dataset.cat] = i.value.trim());
+            return ans;
+        }
+
+        function showStopEffect(winnerName) {
+            const d = document.createElement('div');
+            d.className = 'fixed inset-0 z-50 bg-rose-600 flex items-center justify-center animate-ping opacity-50 pointer-events-none';
+            document.body.appendChild(d);
+            setTimeout(() => d.remove(), 700);
+            showToast(`🛑 STOP de ${winnerName}!`);
+            document.querySelectorAll('#playView input').forEach(i => i.disabled = true);
+        }
+
+        function showRanking() {
+            switchView('rankingView');
+            const sorted = [...app.players].sort((a, b) => b.score - a.score);
+            document.getElementById('finalScores').innerHTML = sorted.map((p, i) => `
+                <div class="flex justify-between items-center bg-slate-700/50 p-3 rounded-lg border-l-4 ${i === 0 ? 'border-yellow-400' : 'border-slate-500'}">
+                    <div class="flex items-center gap-3">
+                        <div class="font-black text-xl w-6 text-slate-400">${i + 1}</div>
+                        <div class="font-bold text-lg text-white">${p.name}</div>
+                    </div>
+                    <div class="font-mono font-bold text-xl text-yellow-500">${p.score}</div>
+                </div>
+            `).join('');
+        }
+
+        // --- UTILS ---
+        function cleanPlayerList() {
+            return app.players.map(p => ({ id: p.id, name: p.name, score: p.score, answers: p.answers }));
+        }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.remove('opacity-0');
+            setTimeout(() => t.classList.add('opacity-0'), 2500);
+        }
+        function removePlayer(id) { app.players = app.players.filter(p => p.id !== id); updateLobby(); }
+
+        // EXPOSE
+        window.callStop = callStop;
+        window.startRound = startRound;
+        window.initHost = initHost;
+        window.initClient = initClient;
+        window.showHostMenu = showHostMenu;
+        window.confirmHost = confirmHost;
+
+    </script>
+</body>
+
+</html>

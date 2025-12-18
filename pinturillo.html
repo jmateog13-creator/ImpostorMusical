@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pinturillo Musical PRO 🎨</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: #0f172a;
+            /* Slate 900 */
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        canvas {
+            cursor: crosshair;
+            touch-action: none;
+            background: white;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-msg {
+            word-break: break-word;
+            font-size: 0.85rem;
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+
+        .msg-correct {
+            color: #86efac;
+            font-weight: bold;
+            background: rgba(34, 197, 94, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border-left: 3px solid #22c55e;
+        }
+
+        /* FORCE FULL VIEWPORT HEIGHT */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        /* OPTIMIZED LAYOUT GRID */
+        #gameGrid {
+            display: grid;
+            grid-template-columns: 200px 1fr 240px;
+            grid-template-rows: 60px 1fr;
+            /* Fixed header, rest is canvas */
+            height: 100vh;
+            /* Force viewport height */
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* Areas */
+        header {
+            grid-column: 1 / -1;
+            z-index: 50;
+        }
+
+        aside.left {
+            background-color: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        aside.right {
+            background-color: #1e293b;
+            border-left: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        /* MAIN: FULL HEIGHT, FORCE EXPANSION */
+        main {
+            background-color: #0f172a;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            height: 100%;
+            /* EXPLICIT HEIGHT */
+            min-height: 0;
+            /* FIX FLEX SCROLL ISSUES */
+        }
+
+        #canvasContainer {
+            flex: 1;
+            /* GROWS TO FILL VERTICAL SPACE */
+            width: 100%;
+            height: 100%;
+            /* ENSURE FILL */
+            border-radius: 0;
+            background: white;
+            position: relative;
+        }
+
+        /* Mobile adjustment */
+        @media (max-width: 768px) {
+            #gameGrid {
+                grid-template-columns: 1fr;
+                grid-template-rows: 50px 1fr 120px;
+            }
+
+            aside.left {
+                display: none;
+            }
+
+
+        }
+    </style>
+</head>
+
+<body class="w-full h-full">
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="absolute inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div
+            class="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-slate-700 relative">
+            <h1
+                class="text-5xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 transform -rotate-2">
+                Pinturillo<br><span class="text-3xl text-white font-normal">Musical</span></h1>
+
+            <div class="mt-8 space-y-4">
+                <input id="usernameInfo" type="text" placeholder="El teu Nom"
+                    class="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-white text-center text-xl focus:border-blue-500 outline-none">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="showHostOptions()"
+                        class="bg-indigo-600 hover:bg-indigo-500 py-4 rounded-xl font-bold group">
+                        <div class="text-xs uppercase text-indigo-300">Soc el Profe</div>
+                        <div class="text-lg"><i class="fas fa-plus-circle mr-2"></i>Crear Sala</div>
+                    </button>
+                    <button onclick="showJoinOptions()"
+                        class="bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold group">
+                        <div class="text-xs uppercase text-slate-400">Soc Alumne</div>
+                        <div class="text-lg"><i class="fas fa-sign-in-alt mr-2"></i>Entrar</div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="hostOptions" class="hidden mt-4 pt-4 border-t border-white/10 text-left animate-fade-in">
+                <label class="text-xs text-gray-400 uppercase font-bold">Rondes:</label>
+                <div class="flex items-center gap-4 mb-4">
+                    <input type="range" min="1" max="10" value="3" class="flex-1"
+                        oninput="document.getElementById('roundsVal').innerText = this.value" id="roundsInput">
+                    <span id="roundsVal" class="font-bold text-blue-400 text-xl">3</span>
+                </div>
+                <button onclick="setupGame('host')"
+                    class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl shadow-lg">OBRIR
+                    LOBBY</button>
+            </div>
+
+            <div id="joinOptions" class="hidden mt-4 pt-4 border-t border-white/10 animate-fade-in">
+                <input id="roomCodeJoin" placeholder="CODI DE SALA"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-center text-2xl font-mono uppercase tracking-widest focus:border-blue-500 outline-none mb-3">
+                <button onclick="setupGame('client')"
+                    class="w-full bg-blue-500 hover:bg-blue-600 py-3 rounded-xl font-bold shadow-lg">UNIR-SE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME GRID -->
+    <div id="gameUI" class="hidden w-full h-full bg-slate-900">
+        <div id="gameGrid">
+
+            <!-- HEADER -->
+            <header
+                class="bg-slate-800 flex items-center justify-between px-4 border-b border-slate-700 z-20 shadow-md">
+                <div class="flex items-center gap-6">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">RONDA</span>
+                        <span id="roundDisplay" class="text-blue-400 font-black text-xl leading-none">1/3</span>
+                    </div>
+                    <!-- WORD MASK -->
+                    <div id="wordDisplay"
+                        class="bg-black/30 px-6 py-2 rounded-lg font-mono text-2xl tracking-[0.3em] font-bold text-white min-w-[200px] text-center border border-white/5">
+                        _ _ _ _ _
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- START BUTTON (HOST ONLY - INJECTED DYNAMICALLY) -->
+                    <div id="hostControls" class="hidden mr-4">
+                        <button onclick="startGameHost()"
+                            class="bg-green-500 hover:bg-green-400 text-black font-bold py-2 px-6 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                            <i class="fas fa-play"></i> COMENÇAR JOC
+                        </button>
+                    </div>
+
+                    <div class="text-right border-l border-white/10 pl-4">
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">TEMPS</div>
+                        <div id="timer" class="text-2xl font-black text-white leading-none w-12 text-center">60</div>
+                    </div>
+                    <button onclick="location.reload()"
+                        class="w-8 h-8 rounded-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-colors"><i
+                            class="fas fa-power-off"></i></button>
+                </div>
+            </header>
+
+            <!-- LEFT: PLAYERS -->
+            <aside class="left flex flex-col overflow-hidden">
+                <div
+                    class="bg-slate-900/50 p-2 text-xs font-bold text-slate-400 uppercase text-center border-b border-white/5">
+                    Classificació</div>
+                <div id="playerList" class="flex-1 overflow-y-auto custom-scroll p-2 space-y-1"></div>
+            </aside>
+
+            <!-- CENTER: CANVAS -->
+            <main>
+                <div class="w-full h-full bg-white rounded-lg overflow-hidden shadow-2xl cursor-crosshair group touch-none relative"
+                    id="canvasContainer">
+                    <canvas id="drawingCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+
+                    <!-- LOBBY OVERLAY -->
+                    <div id="overlay"
+                        class="absolute inset-0 bg-slate-900/95 z-30 flex flex-col items-center justify-center p-6 text-center fade-in backdrop-blur-sm">
+                        <h2 id="overlayTitle"
+                            class="text-4xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
+                            LOBBY</h2>
+                        <div id="overlayContent"
+                            class="flex flex-col gap-3 w-full max-w-lg items-center text-slate-300"></div>
+                    </div>
+
+                    <!-- CORRECT OVERLAY -->
+                    <div id="correctOverlay"
+                        class="absolute inset-0 bg-green-500/90 z-40 flex flex-col items-center justify-center hidden pointer-events-none animate-bounce-in">
+                        <i class="fas fa-check-circle text-8xl text-white mb-4 drop-shadow-lg"></i>
+                        <h1 class="text-6xl font-black text-white drop-shadow-lg">CORRECTE!</h1>
+                        <p class="text-white font-bold mt-2 text-2xl">+<span id="pointsGained">0</span> Puntos</p>
+                    </div>
+
+                    <!-- TOOLBAR -->
+                    <div id="toolbar"
+                        class="hidden absolute top-4 left-1/2 transform -translate-x-1/2 bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl border border-white/10 flex gap-4 items-center z-20 transition-transform hover:scale-105">
+                        <!-- SIZES -->
+                        <div class="flex gap-2 border-r border-white/20 pr-4">
+                            <button onclick="setSize(2)"
+                                class="w-4 h-4 rounded-full bg-slate-400 hover:bg-white"></button>
+                            <button onclick="setSize(6)"
+                                class="w-6 h-6 rounded-full bg-slate-400 hover:bg-white"></button>
+                            <button onclick="setSize(12)"
+                                class="w-8 h-8 rounded-full bg-slate-400 hover:bg-white"></button>
+                        </div>
+                        <!-- COLORS -->
+                        <div class="flex gap-2">
+                            <button onclick="setColor('#000000')"
+                                class="w-8 h-8 rounded-full bg-black border-2 border-white/20"></button>
+                            <button onclick="setColor('#ef4444')"
+                                class="w-8 h-8 rounded-full bg-red-500 border-2 border-white/20"></button>
+                            <button onclick="setColor('#3b82f6')"
+                                class="w-8 h-8 rounded-full bg-blue-500 border-2 border-white/20"></button>
+                            <button onclick="setColor('#22c55e')"
+                                class="w-8 h-8 rounded-full bg-green-500 border-2 border-white/20"></button>
+                            <button onclick="setColor('#eab308')"
+                                class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-white/20"></button>
+                            <button onclick="setColor('#a855f7')"
+                                class="w-8 h-8 rounded-full bg-purple-500 border-2 border-white/20"></button>
+                        </div>
+                        <div class="w-px h-8 bg-white/20"></div>
+                        <div class="flex gap-3 text-xl text-white">
+                            <button onclick="setEraser()" hover:text-red-300><i class="fas fa-eraser"></i></button>
+                            <button onclick="clearCanvasAction()" hover:text-red-500><i
+                                    class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- RIGHT: CHAT -->
+            <aside class="right flex flex-col overflow-hidden">
+                <div
+                    class="bg-slate-900/50 p-2 text-xs font-bold text-slate-400 uppercase text-center border-b border-white/5">
+                    Xat</div>
+                <div id="chatBox" class="flex-1 overflow-y-auto custom-scroll p-2 space-y-1 bg-slate-900/30 font-sans">
+                </div>
+                <form onsubmit="sendChat(event)" class="p-2 bg-slate-800 border-t border-slate-700 flex gap-2">
+                    <input id="chatInput" type="text" autocomplete="off" placeholder="Escriu..."
+                        class="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 outline-none">
+                </form>
+            </aside>
+
+        </div>
+    </div>
+
+    <!-- SCRIPT (Reusing Logic but improved layout) -->
+    <script>
+        // --- 100 MUSICAL WORDS DATABASE ---
+        const MUSIC_DB = [
+            { w: "Guitarra", h: "Corda, caixa de ressonància" }, { w: "Piano", h: "Tecles blanques i negres" }, { w: "Bateria", h: "Plats i tambors" }, { w: "Violí", h: "Es toca amb un arc" },
+            { w: "Trompeta", h: "Metall, tres pistons" }, { w: "Flauta", h: "Vent fusta, bufant" }, { w: "Saxòfon", h: "Metall corbat, sona a Jazz" }, { w: "Arpa", h: "Moltes cordes, celestial" },
+            { w: "Acordió", h: "Té manxa i tecles" }, { w: "Clarinet", h: "Tub negre, vent fusta" }, { w: "Trombó", h: "Metall amb vara lliscant" }, { w: "Ukelele", h: "Guitarra menuda de 4 cordes" },
+            { w: "Maracas", h: "Es sacsegen (ritme llatí)" }, { w: "Triangle", h: "Metall triangular" }, { w: "Gong", h: "Disc gran de metall" }, { w: "Orgue", h: "Teclat gegant d'església" },
+            { w: "Gaita", h: "Instrument típic escocès/gallec" }, { w: "Castanyoles", h: "Fusta, es toquen amb els dits" }, { w: "Xilòfon", h: "Làmines de fusta colpejades" }, { w: "Contrabaix", h: "El més gran de la corda" },
+            { w: "Banjo", h: "Guitarra rodona country" }, { w: "Harmònica", h: "Es bufa, cap a la butxaca" }, { w: "Tuba", h: "El metall més greu" }, { w: "Oboès", h: "Vent fusta, so nasal" },
+            { w: "Micròfon", h: "Per cantar fort" }, { w: "Auriculars", h: "Per escoltar música sol" }, { w: "Altaveu", h: "Caixa d'on surt el so" }, { w: "Disc de Vinil", h: "Rodó, negre, antic" },
+            { w: "Cassette", h: "Cinta magnètica antiga" }, { w: "CD", h: "Disc platejat brillant" }, { w: "MP3", h: "Fitxer de música digital" }, { w: "Ràdio", h: "Aparell per sintonitzar emissores" },
+            { w: "Amplificador", h: "Dóna potència a la guitarra elèctrica" }, { w: "Taula de mescles", h: "Molts botons, la fa servir el DJ" }, { w: "Afinador", h: "Perquè la guitarra soni bé" }, { w: "Metrònom", h: "Marca el temps tic-tac" },
+            { w: "Atril", h: "Suport per aguantar la partitura" }, { w: "Batuta", h: "Vareta del director" }, { w: "Diapasió", h: "Metall en forma d'U, dóna la nota LA" }, { w: "Gramòfon", h: "Repuctor molt antic amb trompeta" },
+            { w: "Clau de Sol", h: "Espir al principi del pentagrama" }, { w: "Pentagrama", h: "Cinc línies on escrivim música" }, { w: "Nota Musical", h: "Dibuix del so (negra, corxera...)" }, { w: "Silenci", h: "Signe de no tocar res" },
+            { w: "Partitura", h: "Paper amb la música escrita" }, { w: "Compàs", h: "Divideix la música en parts iguals" }, { w: "Agut", h: "So molt fi i alt" }, { w: "Greu", h: "So molt profund i baix" },
+            { w: "Ritme", h: "El batec de la música" }, { w: "Melodia", h: "El que pots taral·lejar" }, { w: "Harmonia", h: "Múltiples notes sonant alhora" }, { w: "Solfeig", h: "Llegir les notes" },
+            { w: "Rock", h: "Guitarres elèctriques i energia" }, { w: "Jazz", h: "Improvització, saxos i trompetes" }, { w: "Pop", h: "Estil molt popular i comercial" }, { w: "Música Clàssica", h: "Orquestres, segles passats" },
+            { w: "Reggaeton", h: "Ritme llatí ballable actual" }, { w: "Rap", h: "Rimes parlades ràpid" }, { w: "Heavy Metal", h: "Rock molt dur i sorollós" }, { w: "Flamenc", h: "Guitarra espanyola i palmas" },
+            { w: "Blues", h: "Música trista del sud dels EUA" }, { w: "Disco", h: "Anys 70, boles de miralls" }, { w: "Opera", h: "Teatre cantat molt potent" }, { w: "Salsa", h: "Ball llatí en parella" },
+            { w: "Reggae", h: "Ritme Jamaicà relaxat" }, { w: "Punk", h: "Rock ràpid i rebel" }, { w: "Eletrònica", h: "Feta amb ordinadors i sintetitzadors" }, { w: "K-Pop", h: "Pop coreà amb coreografies" },
+            { w: "Cantant", h: "Persona que fa servir la veu" }, { w: "Director", h: "Guia l'orquestra" }, { w: "Banda", h: "Grup de músics de rock/pop" }, { w: "Orquestra", h: "Grup molt gran de músics clàssics" },
+            { w: "DJ", h: "Posa discos a la festa" }, { w: "Compositor", h: "Persona que inventa la música" }, { w: "Luthier", h: "Artesà que fa instruments" }, { w: "Coral", h: "Grup de gent cantant junta" },
+            { w: "Públic", h: "Gent que mira l'espectacle" }, { w: "Fan", h: "Seguidor entusiasta d'un grup" }, { w: "Tenor", h: "Cantant d'òpera masculí" }, { w: "Soprano", h: "Cantant d'òpera femenina (agut)" },
+            { w: "Ballar", h: "Moure el cos amb ritme" }, { w: "Aplaudir", h: "Picar de mans" }, { w: "Xiular", h: "So agut amb la boca" }, { w: "Assajar", h: "Practicar abans del concert" },
+            { w: "Concert", h: "Espectacle musical en viu" }, { w: "Escenari", h: "Plataforma on toquen els músics" }, { w: "Festival", h: "Molts concerts a l'aire lliure" }, { w: "Gira", h: "Viatge fent concerts per ciutats" },
+            { w: "Videoclip", h: "Vídeo d'una cançó" }, { w: "Entrada", h: "Bitllet per entrar al concert" }, { w: "Teló", h: "Cortina gran del teatre" }, { w: "Focus", h: "Llum que apunta a l'artista" }
+        ];
+
+        // --- GLOBAL APP STATE ---
+        const app = {
+            peer: null, conn: null, myId: null, myName: '', mode: '', roomId: '',
+            hostConns: [], players: [],
+            totalRounds: 3, currentRound: 0,
+            gameState: 'LOBBY',
+            currentDrawerIndex: -1, currentDrawerId: null,
+            currentWordObj: null, turnTimer: 60, timerInterval: null,
+            startTime: 0
+        };
+
+        // --- CANVAS ---
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+        let brushColor = '#000000';
+        let brushSize = 4;
+
+        // --- UI FUNCS ---
+        function showHostOptions() { document.getElementById('hostOptions').classList.remove('hidden'); document.getElementById('joinOptions').classList.add('hidden'); }
+        function showJoinOptions() { document.getElementById('joinOptions').classList.remove('hidden'); document.getElementById('hostOptions').classList.add('hidden'); }
+
+        // --- SETUP ---
+        function setupGame(mode) {
+            const name = document.getElementById('usernameInfo').value.trim() || ("Jugador " + Math.floor(Math.random() * 100));
+            app.myName = name;
+            app.mode = mode;
+
+            if (mode === 'host') {
+                app.totalRounds = parseInt(document.getElementById('roundsInput').value);
+                document.getElementById('hostControls').classList.remove('hidden'); // Show Host Start Button in Header
+                initHost();
+            } else {
+                app.roomId = document.getElementById('roomCodeJoin').value.trim().toUpperCase();
+                if (app.roomId.length < 3) return alert("Codi invàlid");
+                initClient();
+            }
+
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('gameUI').classList.remove('hidden');
+            // Delay resize to ensure layout is computed
+            setTimeout(() => { resizeCanvas(); window.addEventListener('resize', resizeCanvas); }, 100);
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvasContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        // --- PEERJS ---
+        function initHost() {
+            app.roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+            app.peer = new Peer("PMUSIC-" + app.roomId);
+            app.peer.on('open', id => {
+                app.myId = id;
+                app.players = [{ id, name: app.myName, score: 0, drawnCount: 0 }];
+                showLobbyHost();
+            });
+            app.peer.on('connection', conn => {
+                conn.on('data', d => handleHostData(conn, d));
+                conn.on('close', () => removePlayer(conn.peer));
+                app.hostConns.push(conn);
+            });
+            app.peer.on('error', e => { if (e.type === 'unavailable-id') { app.peer.destroy(); initHost(); } else alert("Error P2P: " + e); });
+        }
+
+        function initClient() {
+            app.peer = new Peer();
+            app.peer.on('open', id => {
+                app.myId = id;
+                const conn = app.peer.connect("PMUSIC-" + app.roomId);
+                conn.on('open', () => {
+                    conn.send({ type: 'JOIN', name: app.myName });
+                    showWaitingOverlay("Connectat!", "Esperant al profe...");
+                });
+                conn.on('data', handleClientData);
+                conn.on('close', () => { alert("Sala tancada"); location.reload(); });
+                app.conn = conn;
+            });
+        }
+
+        // --- DATA ---
+        function handleHostData(conn, data) {
+            if (data.type === 'JOIN') {
+                if (app.gameState !== 'LOBBY') { conn.send({ type: 'ERR', msg: 'Partida començada' }); return; }
+                app.players.push({ id: conn.peer, name: data.name, score: 0, drawnCount: 0 });
+                syncPlayers();
+                showLobbyHost();
+            }
+            if (data.type === 'DRAW_OP') { broadcast(data, conn.peer); applyDrawOp(data); }
+            if (data.type === 'GUESS') { processGuess(conn.peer, data.msg); }
+            if (data.type === 'WORD_SELECT') { if (conn.peer === app.currentDrawerId) startTurn(data.index); }
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'SYNC_PLAYERS') { app.players = data.list; updatePlayerUI(); }
+            if (data.type === 'STATE_UPDATE') { handleStateUpdate(data); }
+            if (data.type === 'DRAW_OP') { applyDrawOp(data); }
+            if (data.type === 'CHAT_MSG') {
+                addChatMsg(data.name, data.msg, data.kind);
+                if (data.kind === 'correct' && data.id === app.myId) showCorrectOverlay(data.points);
+            }
+            if (data.type === 'TIME_SYNC') { updateTimerUI(data.val); }
+        }
+
+        function broadcast(msg, excludeId = null) {
+            if (app.mode === 'host') app.hostConns.forEach(c => { if (c.open && c.peer !== excludeId) c.send(msg); });
+        }
+        function syncPlayers() { broadcast({ type: 'SYNC_PLAYERS', list: app.players }); updatePlayerUI(); }
+
+        function removePlayer(id) { app.players = app.players.filter(p => p.id !== id); syncPlayers(); showLobbyHost(); }
+
+
+        // --- LOGIC (HOST) ---
+        function startGameHost() {
+            if (app.players.length < 2) return alert("Necessites almenys 2 jugadors!");
+            // Hide the Lobby button since game starts
+            const btn = document.querySelector('#hostControls button');
+            if (btn) btn.style.display = 'none';
+
+            app.currentRound = 1;
+            app.currentDrawerIndex = -1;
+            nextTurn();
+        }
+
+        function nextTurn() {
+            app.currentDrawerIndex++;
+            if (app.currentDrawerIndex >= app.players.length) {
+                app.currentDrawerIndex = 0;
+                app.currentRound++;
+            }
+            if (app.currentRound > app.totalRounds) { endGame(); return; }
+
+            const drawer = app.players[app.currentDrawerIndex];
+            app.currentDrawerId = drawer.id;
+            app.players.forEach(p => p.guessedThisTurn = false);
+
+            let opts = [];
+            while (opts.length < 3) {
+                let r = MUSIC_DB[Math.floor(Math.random() * MUSIC_DB.length)];
+                if (!opts.includes(r)) opts.push(r);
+            }
+            app.turnOptions = opts;
+
+            app.gameState = 'SELECTING';
+            const stateData = {
+                state: 'SELECTING',
+                drawerId: app.currentDrawerId,
+                drawerName: drawer.name,
+                round: app.currentRound,
+                totalRounds: app.totalRounds,
+                options: opts
+            };
+            broadcast({ type: 'STATE_UPDATE', ...stateData });
+            handleStateUpdate(stateData);
+        }
+
+        function startTurn(wordIndex) {
+            const wObj = app.turnOptions[wordIndex];
+            app.currentWordObj = wObj;
+            app.gameState = 'DRAWING';
+            app.turnTimer = 60;
+            app.startTime = Date.now();
+
+            const masked = wObj.w.replace(/[a-zA-Z0-9àáèéíòóúçñ]/g, "_ ");
+            const data = {
+                state: 'DRAWING',
+                drawerId: app.currentDrawerId,
+                wordMask: masked,
+                definition: wObj.h,
+                chosenWord: wObj
+            };
+            broadcast({ type: 'STATE_UPDATE', ...data });
+            handleStateUpdate(data);
+
+            if (app.timerInterval) clearInterval(app.timerInterval);
+            app.timerInterval = setInterval(() => {
+                app.turnTimer--;
+                updateTimerUI(app.turnTimer);
+                broadcast({ type: 'TIME_SYNC', val: app.turnTimer });
+                if (app.turnTimer <= 0) endTurnHost("Temps Esgotat!");
+            }, 1000);
+        }
+
+        function processGuess(playerId, rawMsg) {
+            const player = app.players.find(p => p.id === playerId);
+            if (!player || player.guessedThisTurn || playerId === app.currentDrawerId || app.gameState !== 'DRAWING') {
+                broadcast({ type: 'CHAT_MSG', name: player.name, msg: rawMsg, kind: 'normal' });
+                addChatMsg(player.name, rawMsg, 'normal');
+                return;
+            }
+
+            const cleanGuess = rawMsg.trim().toLowerCase();
+            const cleanTarget = app.currentWordObj.w.trim().toLowerCase();
+
+            if (cleanGuess === cleanTarget) {
+                player.guessedThisTurn = true;
+                const elapsed = (Date.now() - app.startTime) / 1000;
+                let pts = elapsed < 10 ? 100 : (elapsed < 30 ? 75 : 50);
+                player.score += pts;
+
+                const drawer = app.players.find(p => p.id === app.currentDrawerId);
+                if (drawer) drawer.score += 20;
+
+                broadcast({ type: 'CHAT_MSG', name: player.name, msg: 'Ha encertat!', kind: 'correct', id: playerId, points: pts });
+                addChatMsg(player.name, 'Ha encertat!', 'correct');
+                syncPlayers();
+
+                const guessers = app.players.filter(p => p.id !== app.currentDrawerId);
+                if (guessers.every(p => p.guessedThisTurn)) endTurnHost("Tothom ha encertat!");
+
+            } else {
+                broadcast({ type: 'CHAT_MSG', name: player.name, msg: rawMsg, kind: 'normal' });
+                addChatMsg(player.name, rawMsg, 'normal');
+            }
+        }
+
+        function endTurnHost(reason) {
+            clearInterval(app.timerInterval);
+            const data = { state: 'TURN_END', word: app.currentWordObj.w, reason: reason };
+            broadcast({ type: 'STATE_UPDATE', ...data });
+            handleStateUpdate(data);
+            setTimeout(() => nextTurn(), 4000);
+        }
+
+        function endGame() {
+            const data = { state: 'GAME_END', players: app.players };
+            broadcast({ type: 'STATE_UPDATE', ...data });
+            handleStateUpdate(data);
+        }
+
+        // --- CLIENT ---
+        function handleStateUpdate(data) {
+            // CRITICAL SYNC: Update local state from server data
+            if (data.state) app.gameState = data.state;
+            if (data.drawerId) app.currentDrawerId = data.drawerId;
+
+            document.getElementById('toolbar').classList.add('hidden');
+            const ov = document.getElementById('overlay');
+            ov.classList.add('hidden');
+
+            if (data.round) document.getElementById('roundDisplay').innerText = `${data.round}/${data.totalRounds}`;
+
+            if (data.state === 'SELECTING') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('wordDisplay').innerText = "_ _ _";
+                document.getElementById('timer').classList.remove('text-red-500');
+
+                if (app.myId === data.drawerId) {
+                    let html = `<p class="mb-4">Tria paraula:</p><div class="flex gap-4">`;
+                    data.options.forEach((opt, idx) => {
+                        html += `<button onclick="clientSelectWord(${idx})" class="bg-blue-600 hover:bg-blue-500 py-4 px-6 rounded-xl font-bold text-lg hover:scale-105 transition-transform flex flex-col items-center">
+                            <span>${opt.w}</span>
+                            <span class="text-xs font-normal opacity-70 mt-1 text-blue-200 text-center">${opt.h.substring(0, 25)}...</span>
+                        </button>`;
+                    });
+                    html += `</div>`;
+                    showOverlay("EL TEU TORN!", html);
+                } else {
+                    showWaitingOverlay(data.drawerName, "està triant paraula...");
+                }
+            }
+
+            else if (data.state === 'DRAWING') {
+                if (app.myId === data.drawerId) {
+                    document.getElementById('toolbar').classList.remove('hidden');
+                    document.getElementById('wordDisplay').innerText = data.chosenWord.w;
+                    addChatMsg("SISTEMA", `Pista: ${data.chosenWord.h}`, 'system');
+                } else {
+                    document.getElementById('wordDisplay').innerText = data.wordMask;
+                    // Hint hidden for guessers as requested
+                    // addChatMsg("SISTEMA", `Pista: ${data.definition}`, 'system'); 
+                }
+            }
+
+            else if (data.state === 'TURN_END') {
+                showOverlay("FI DE TORN", `<div class="mb-2 text-slate-400">${data.reason}</div>
+                    <div class="text-5xl font-black text-blue-400 mb-2">${data.word}</div>`);
+            }
+
+            else if (data.state === 'GAME_END') {
+                if (app.mode === 'host') {
+                    const btn = document.querySelector('#hostControls button');
+                    if (btn) { btn.style.display = 'flex'; btn.innerHTML = '<i class="fas fa-redo"></i> NOVA PARTIDA'; }
+                }
+                const sorted = data.players.sort((a, b) => b.score - a.score);
+                let html = `<div class="w-full max-w-sm bg-slate-800 rounded-xl p-4 text-left">`;
+                sorted.forEach((p, i) => {
+                    let icon = i === 0 ? '👑' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+                    html += `<div class="flex justify-between border-b border-white/5 py-2">
+                       <span class="${i === 0 ? 'text-blue-400 font-bold' : ''}">${icon} ${p.name}</span>
+                       <span class="font-mono">${p.score}</span>
+                   </div>`;
+                });
+                html += `</div>`;
+                showOverlay("RÀNQUING FINAL", html);
+            }
+        }
+
+        function clientSelectWord(idx) {
+            if (app.mode === 'host') startTurn(idx);
+            else app.conn.send({ type: 'WORD_SELECT', index: idx });
+        }
+
+        // --- DRAWING ---
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+        }
+        canvas.addEventListener('mousedown', startD); canvas.addEventListener('touchstart', startD);
+        canvas.addEventListener('mousemove', moveD); canvas.addEventListener('touchmove', moveD);
+        canvas.addEventListener('mouseup', endD); canvas.addEventListener('touchend', endD);
+
+        function startD(e) {
+            if (app.gameState !== 'DRAWING' || app.myId !== app.currentDrawerId) return;
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x; lastY = pos.y;
+            emitDraw('start', pos.x, pos.y);
+        }
+        function moveD(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            drawCurve(lastX, lastY, pos.x, pos.y, brushColor, brushSize);
+            emitDraw('draw', pos.x, pos.y, lastX, lastY);
+            lastX = pos.x; lastY = pos.y;
+        }
+        function endD() { isDrawing = false; }
+
+        function emitDraw(kind, x, y, px, py) {
+            const op = { type: 'DRAW_OP', kind, x: Math.round(x), y: Math.round(y), px: Math.round(px), py: Math.round(py), c: brushColor, s: brushSize };
+            if (app.mode === 'host') broadcast(op); else app.conn.send(op);
+        }
+        function applyDrawOp(op) {
+            if (op.kind === 'draw') drawCurve(op.px, op.py, op.x, op.y, op.c, op.s);
+            if (op.kind === 'clear') ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        function drawCurve(x1, y1, x2, y2, c, s) { ctx.strokeStyle = c; ctx.lineWidth = s; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+
+        function setColor(c) { brushColor = c; }
+        function setSize(s) { brushSize = s; }
+        function setEraser() { brushColor = '#ffffff'; brushSize = 25; }
+        function clearCanvasAction() { emitDraw('clear'); ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        // --- CHAT ---
+        function sendChat(e) {
+            e.preventDefault();
+            const i = document.getElementById('chatInput');
+            const txt = i.value.trim();
+            if (!txt) return;
+            if (app.mode === 'host') processGuess(app.myId, txt);
+            else app.conn.send({ type: 'GUESS', msg: txt });
+            i.value = '';
+        }
+        function addChatMsg(name, msg, kind) {
+            const b = document.getElementById('chatBox');
+            const d = document.createElement('div');
+            d.className = `chat-msg px-2 py-1 rounded ${kind === 'correct' ? 'msg-correct' : (kind === 'system' ? 'text-gray-500 italic text-xs text-center' : 'text-gray-300')}`;
+            if (kind === 'system') d.innerText = msg;
+            else d.innerHTML = `<span class="font-bold text-slate-400 mr-2">${name}:</span>${msg}`;
+            b.appendChild(d);
+            b.scrollTop = b.scrollHeight;
+        }
+
+        // --- HELPERS ---
+        function showLobbyHost() {
+            // Check visibility of Host Controls
+            if (app.gameState === 'LOBBY') {
+                showOverlay("LOBBY PROFE", `
+                <div class="mb-4">CODI DE SALA: <span class="font-mono text-4xl text-blue-400 font-black tracking-widest bg-black/20 px-4 py-2 rounded-lg block mt-2 select-all">${app.roomId}</span></div>
+                <div class="text-sm text-slate-400 mb-4">Esperant alumnes...</div>
+                <div id="lobbyCount" class="font-bold mb-4 text-xl">👤 ${app.players.length} Jugadors</div>
+                <p class="text-xs text-slate-500">Prem "COMENÇAR JOC" a dalt a la dreta quan estigueu tots.</p>
+               `);
+            }
+        }
+        function showWaitingOverlay(sub, desc) { showOverlay(sub, `<div class="animate-pulse">${desc}</div>`); }
+        function showOverlay(t, c) {
+            const ov = document.getElementById('overlay');
+            ov.classList.remove('hidden');
+            document.getElementById('overlayTitle').innerText = t;
+            document.getElementById('overlayContent').innerHTML = c;
+        }
+        function updatePlayerUI() {
+            const l = document.getElementById('playerList');
+            const sorted = [...app.players].sort((a, b) => b.score - a.score);
+            l.innerHTML = sorted.map((p, i) => `
+                <div class="flex items-center justify-between p-2 rounded ${p.id === app.currentDrawerId ? 'bg-blue-500/10 border-l-2 border-blue-500' : (p.guessedThisTurn ? 'bg-green-500/10 border-l-2 border-green-500' : '')}">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <div class="font-bold text-slate-500 w-3 text-[10px]">${i + 1}</div>
+                        <div class="truncate font-bold text-xs ${p.id === app.myId ? 'text-white' : ('text-slate-400')}">${p.name}</div>
+                    </div>
+                    <div class="font-mono text-xs font-bold text-blue-500">${p.score}</div>
+                </div>
+            `).join('');
+            if (app.gameState === 'LOBBY' && app.mode === 'host') showLobbyHost();
+        }
+        function updateTimerUI(val) {
+            const t = document.getElementById('timer');
+            t.innerText = val;
+            if (val < 10) t.classList.add('text-red-500'); else t.classList.remove('text-red-500');
+        }
+        function showCorrectOverlay(pts) {
+            const ov = document.getElementById('correctOverlay');
+            document.getElementById('pointsGained').innerText = pts;
+            ov.classList.remove('hidden');
+            setTimeout(() => ov.classList.add('hidden'), 2000);
+        }
+    </script>
+</body>
+
+</html>

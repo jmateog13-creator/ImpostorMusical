@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lletres Musicals 🅰️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: #eab308;
+            color: #422006;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Dynamic Background */
+        .scrolling-text {
+            animation: scroll 60s linear infinite;
+            white-space: nowrap;
+            opacity: 0.1;
+            font-weight: 900;
+            font-size: 10rem;
+        }
+
+        @keyframes scroll {
+            from {
+                transform: translateX(0);
+            }
+
+            to {
+                transform: translateX(-50%);
+            }
+        }
+    </style>
+</head>
+
+<body class="flex flex-col h-full w-full bg-amber-500 text-amber-950 relative overflow-hidden">
+
+    <!-- DECO BG -->
+    <div class="absolute inset-0 pointer-events-none flex flex-col justify-between -z-10">
+        <div class="scrolling-text">A B C D E F G A B C D E F G A B C D E F G A B C D E F G</div>
+        <div class="scrolling-text" style="animation-direction: reverse;">DO RE MI FA SOL LA SI DO RE MI FA SOL LA SI
+        </div>
+    </div>
+
+    <!-- LOGIN (Improved Centering) -->
+    <div id="login" class="absolute inset-0 bg-amber-600/90 z-50 flex items-center justify-center p-4">
+        <div
+            class="bg-amber-100 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border-4 border-amber-800 relative flex flex-col gap-4">
+
+            <div>
+                <div class="text-6xl mb-2">🔤</div>
+                <h1 class="text-3xl font-black mb-1 uppercase tracking-wider">Lletres</h1>
+                <h2 class="text-xl text-amber-700 font-bold">Veloces</h2>
+            </div>
+
+            <!-- STUDENT FORM -->
+            <div id="studentForm" class="flex flex-col gap-3">
+                <input id="myName" type="text" placeholder="Nom de l'Equip"
+                    class="w-full bg-white border border-amber-300 rounded-xl p-3 text-center text-xl focus:border-amber-600 outline-none transition-all font-bold">
+                <input id="joinCode" placeholder="CODI DE SALA"
+                    class="w-full bg-white border border-amber-300 rounded-xl p-3 text-center uppercase font-mono text-xl focus:border-amber-600 outline-none font-bold">
+
+                <button onclick="initClient()"
+                    class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_rgb(146,64,14)] mt-2 transition-all active:translate-y-1 active:shadow-none text-xl">
+                    JUGAR! 🚀
+                </button>
+                <button onclick="toggleTeacherMode()" class="mt-2 text-amber-800 text-xs hover:text-white underline">Ets
+                    el Professor?</button>
+            </div>
+
+            <!-- TEACHER FORM -->
+            <div id="teacherForm" class="hidden flex flex-col gap-3 fade-in">
+                <div class="text-amber-800 font-bold uppercase text-sm mb-2 border-b border-amber-300 pb-2">Zona de
+                    Professor</div>
+                <input id="hostName" type="text" value="Professor"
+                    class="w-full bg-amber-200 border border-amber-300 rounded-xl p-3 text-center text-xl font-bold cursor-not-allowed"
+                    readonly>
+
+                <!-- Max Score Config -->
+                <label class="text-xs font-bold text-amber-700 mt-2">Punts per Guanyar:</label>
+                <div class="flex items-center justify-center gap-2">
+                    <button onclick="adjScore(-100)"
+                        class="w-8 h-8 bg-amber-300 rounded-full font-bold hover:bg-amber-400">-</button>
+                    <span id="maxScoreVal" class="text-2xl font-black w-16">1000</span>
+                    <button onclick="adjScore(100)"
+                        class="w-8 h-8 bg-amber-300 rounded-full font-bold hover:bg-amber-400">+</button>
+                </div>
+
+                <button onclick="initHost()"
+                    class="w-full bg-amber-800 hover:bg-amber-700 text-white font-bold py-4 rounded-xl transition-all shadow-[0_4px_0_rgb(66,32,6)] active:translate-y-1 active:shadow-none text-xl mt-4">
+                    CREAR SALA
+                </button>
+                <button onclick="toggleTeacherMode()" class="mt-4 text-amber-800 text-xs hover:text-white"><i
+                        class="fas fa-arrow-left"></i> Tornar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME UI (Added pt-16 for spacing) -->
+    <div id="game" class="hidden flex-col h-full max-w-6xl mx-auto w-full p-2 sm:p-4 pt-16">
+
+        <!-- HEADER -->
+        <div
+            class="flex justify-between items-center bg-white/50 p-3 rounded-xl backdrop-blur-sm border border-white/40 shadow-lg mb-2 sm:mb-4">
+            <div class="flex items-center gap-3 font-bold text-amber-900">
+                <i class="fas fa-flag-checkered"></i> <span id="maxScoreDisplay">1000</span> pts
+            </div>
+            <div class="flex-1 text-center font-black text-xl sm:text-2xl tracking-widest uppercase">Lletres Veloces
+            </div>
+            <button onclick="location.reload()" class="text-amber-800 hover:text-red-600"><i
+                    class="fas fa-sign-out-alt"></i></button>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div
+            class="flex-1 relative bg-white/30 rounded-2xl border border-white/40 shadow-inner flex flex-col items-center justify-center p-4">
+
+            <!-- LOBBY -->
+            <div id="lobbyView" class="text-center w-full max-w-md hidden">
+                <div class="text-5xl mb-4 animate-bounce">⏳</div>
+                <div class="text-2xl font-bold mb-4">Codi Sala: <span id="roomCodeDisp"
+                        class="font-mono bg-white px-3 py-1 rounded select-all border border-amber-300"></span></div>
+                <div id="playerList" class="flex flex-wrap justify-center gap-4 mb-8"></div>
+
+                <div id="hostControls" class="hidden">
+                    <button onclick="startRound()"
+                        class="w-full bg-amber-600 hover:bg-amber-500 text-white text-2xl font-black py-4 rounded-xl shadow-lg transform hover:scale-105 transition-all">
+                        GENERAR LLETRES 🎲
+                    </button>
+                </div>
+                <div id="clientWaitMsg" class="hidden text-amber-900 animate-pulse text-xl">Esperant la ronda...</div>
+            </div>
+
+            <!-- GAME ROUND -->
+            <div id="roundView"
+                class="hidden text-center w-full max-w-4xl flex flex-col items-center h-full justify-center">
+
+                <!-- Letters Display -->
+                <div class="flex items-center gap-4 sm:gap-8 mb-8 scale-75 sm:scale-100">
+                    <div class="w-32 h-32 bg-white rounded-3xl shadow-xl flex items-center justify-center text-8xl font-black text-amber-600 border-b-8 border-amber-200"
+                        id="l1">?</div>
+                    <div class="text-4xl font-bold text-amber-800">...</div>
+                    <div class="w-32 h-32 bg-white rounded-3xl shadow-xl flex items-center justify-center text-8xl font-black text-amber-600 border-b-8 border-amber-200"
+                        id="l2">?</div>
+                </div>
+
+                <!-- Timer -->
+                <div id="timerBar" class="w-full max-w-md h-4 bg-black/10 rounded-full overflow-hidden mb-8">
+                    <div id="timerFill" class="h-full bg-red-500 w-full transition-all duration-1000 ease-linear"></div>
+                </div>
+                <div id="timerNum" class="text-6xl font-black text-white drop-shadow-lg mb-8">20</div>
+
+                <!-- Input Zone -->
+                <div id="inputZone" class="w-full max-w-md relative">
+                    <input id="wordInput" type="text"
+                        class="w-full text-center text-3xl font-bold p-4 rounded-xl border-4 border-white/50 bg-white/80 focus:bg-white focus:border-amber-500 outline-none uppercase placeholder-amber-900/20"
+                        placeholder="ESCRIC AQUÍ..." onkeyup="checkEnter(event)" disabled>
+                    <button onclick="submitWord()" id="sendBtn"
+                        class="absolute right-2 top-2 bottom-2 bg-green-500 hover:bg-green-400 text-white aspect-square rounded-lg font-bold shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        <i class="fas fa-paper-plane text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Host Validation UI -->
+                <div id="hostValidation"
+                    class="hidden mt-8 w-full max-w-lg bg-white p-6 rounded-2xl shadow-2xl border-4 border-amber-400 animate-bounce-in">
+                    <div class="text-sm font-bold uppercase text-gray-500 mb-2">Resposta rebuda de <span
+                            id="valTeamName" class="text-black"></span>:</div>
+                    <div id="valWord" class="text-5xl font-black text-amber-600 mb-6 uppercase">PIANO</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="validate(false)"
+                            class="bg-gray-200 hover:bg-gray-300 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+                            ❌ Incorrecte (-50)
+                        </button>
+                        <button onclick="validate(true, false)"
+                            class="bg-blue-100 hover:bg-blue-200 text-blue-800 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+                            ✅ Correcte (+100)
+                        </button>
+                        <button onclick="validate(true, true)"
+                            class="col-span-2 bg-amber-500 hover:bg-amber-400 text-white py-4 rounded-xl font-black text-xl shadow-lg flex items-center justify-center gap-2 transform hover:scale-105 transition-transform">
+                            🎵 MUSICAL (+200)
+                        </button>
+                    </div>
+                </div>
+
+                <div id="resultMsg" class="hidden mt-4 text-3xl font-black text-white drop-shadow-md"></div>
+
+            </div>
+
+            <!-- WINNER SCREEN -->
+            <div id="winnerScreen" class="hidden text-center">
+                <div class="text-8xl mb-4 animate-bounce">🏆</div>
+                <h1 class="text-5xl font-black text-white mb-2">GUANYADOR</h1>
+                <h2 id="winnerText"
+                    class="text-6xl font-black text-amber-900 bg-white px-8 py-4 rounded-2xl shadow-xl transform -rotate-2 inline-block">
+                    EQUIP 1</h2>
+                <button onclick="location.reload()"
+                    class="mt-12 bg-black text-white px-8 py-3 rounded-full font-bold hover:bg-gray-800">Tornar al
+                    Menú</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast"
+        class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl pointer-events-none opacity-0 transition-opacity z-50 font-bold border border-amber-500">
+        Msg</div>
+
+    <script>
+        // --- STATE ---
+        const app = {
+            peer: null, conn: null, myId: null, isHost: false, roomId: '', players: [],
+            maxScore: 1000,
+            roundActive: false,
+            l1: '', l2: '',
+            timer: 20, timerIdx: null
+        };
+
+        // --- UI TOGGLES ---
+        function toggleTeacherMode() {
+            const s = document.getElementById('studentForm');
+            const t = document.getElementById('teacherForm');
+            s.classList.toggle('hidden'); t.classList.toggle('hidden');
+        }
+
+        function adjScore(v) {
+            app.maxScore = Math.max(100, app.maxScore + v);
+            document.getElementById('maxScoreVal').innerText = app.maxScore;
+        }
+
+        // --- SETUP ---
+        function initHost() { setup('host'); }
+        function initClient() { setup('client'); }
+
+        function setup(mode) {
+            app.isHost = (mode === 'host');
+            let name = app.isHost ? "Professor" : document.getElementById('myName').value.trim();
+            if (!app.isHost && !name) return showToast("Nom obligatori!");
+
+            document.getElementById('login').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('game').classList.add('flex');
+            document.getElementById('maxScoreDisplay').innerText = app.maxScore;
+
+            if (app.isHost) {
+                app.roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                app.peer = new Peer("ALPHA-" + app.roomId);
+                app.peer.on('open', id => { app.myId = id; updateLobby(); document.getElementById('hostControls').classList.remove('hidden'); });
+                app.peer.on('connection', c => {
+                    c.on('data', d => handleHostData(c, d));
+                    c.on('close', () => removePlayer(c.peer));
+                    app.players.push({ id: c.peer, name: 'Joining...', score: 0, conn: c });
+                });
+            } else {
+                const code = document.getElementById('joinCode').value.trim().toUpperCase();
+                if (!code) return showToast("Codi de Sala obligatori!");
+                app.peer = new Peer();
+                app.peer.on('open', id => {
+                    app.myId = id;
+                    app.conn = app.peer.connect("ALPHA-" + code);
+                    app.conn.on('open', () => { app.conn.send({ type: 'JOIN', name }); document.getElementById('clientWaitMsg').classList.remove('hidden'); });
+                    app.conn.on('data', handleClientData);
+                });
+            }
+            switchView('lobbyView');
+        }
+
+        // --- NETWORKING ---
+        function handleHostData(conn, data) {
+            const p = app.players.find(x => x.id === conn.peer);
+            if (data.type === 'JOIN') {
+                if (p) p.name = data.name;
+                broadcastUpdate();
+                p.conn.send({ type: 'SETTINGS', maxScore: app.maxScore });
+            }
+            if (data.type === 'WORD' && app.roundActive) {
+                // First valid input freezes the round
+                app.roundActive = false;
+                clearInterval(app.timerIdx);
+                broadcast({ type: 'PAUSE_ROUND' }); // Stop others
+
+                // Show validation UI
+                document.getElementById('hostValidation').classList.remove('hidden');
+                document.getElementById('valTeamName').innerText = p.name;
+                document.getElementById('valWord').innerText = data.word;
+                app.currentReview = { playerId: p.id, word: data.word };
+            }
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'UPDATE') { app.players = data.list; updateLobby(); checkWinner(); }
+            if (data.type === 'SETTINGS') { app.maxScore = data.maxScore; document.getElementById('maxScoreDisplay').innerText = app.maxScore; }
+            if (data.type === 'NEW_ROUND') {
+                app.l1 = data.l1; app.l2 = data.l2;
+                startRoundUI();
+            }
+            if (data.type === 'PAUSE_ROUND') {
+                clearInterval(app.timerIdx);
+                document.getElementById('wordInput').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                document.getElementById('resultMsg').innerText = "Validant...";
+                document.getElementById('resultMsg').classList.remove('hidden');
+            }
+            if (data.type === 'RESUME_ROUND') {
+                document.getElementById('resultMsg').classList.add('hidden');
+                document.getElementById('wordInput').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('wordInput').focus();
+
+                // Restart timer from provided time
+                app.timer = data.t;
+                updateTimerUI();
+                app.timerIdx = setInterval(() => {
+                    app.timer--;
+                    updateTimerUI();
+                    if (app.timer <= 0) clearInterval(app.timerIdx);
+                }, 1000);
+            }
+            if (data.type === 'SYNC_TIMER') {
+                if (Math.abs(app.timer - data.t) > 2) app.timer = data.t;
+            }
+            if (data.type === 'ROUND_END') {
+                document.getElementById('resultMsg').innerText = data.msg;
+                setTimeout(() => {
+                    switchView('lobbyView');
+                    document.getElementById('resultMsg').classList.add('hidden');
+                }, 3000);
+            }
+            if (data.type === 'GAME_OVER') {
+                showWinnerScreen(data.winnerName);
+            }
+        }
+
+        function broadcastUpdate() {
+            const cleanList = app.players.map(p => ({ id: p.id, name: p.name, score: p.score }));
+            app.players.forEach(p => { if (p.conn && p.conn.open) p.conn.send({ type: 'UPDATE', list: cleanList }); });
+            updateLobby(); // Host update self
+            checkWinner();
+        }
+        function broadcast(msg) { app.players.forEach(p => { if (p.conn && p.conn.open) p.conn.send(msg); }); }
+
+        // --- GAME LOGIC ---
+        function startRound() {
+            const abcFull = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const l1 = abcFull[Math.floor(Math.random() * abcFull.length)];
+            const l2 = abcFull[Math.floor(Math.random() * abcFull.length)];
+
+            app.l1 = l1; app.l2 = l2;
+            app.roundActive = true;
+
+            broadcast({ type: 'NEW_ROUND', l1, l2 });
+            startRoundUI();
+        }
+
+        function startRoundUI() {
+            switchView('roundView');
+            document.getElementById('l1').innerText = app.l1;
+            document.getElementById('l2').innerText = app.l2;
+            document.getElementById('wordInput').value = '';
+            document.getElementById('hostValidation').classList.add('hidden');
+            document.getElementById('resultMsg').classList.add('hidden');
+
+            // Enable Inputs for EVERYONE
+            const inp = document.getElementById('wordInput');
+            const btn = document.getElementById('sendBtn');
+            inp.disabled = false;
+            btn.disabled = false;
+            inp.focus();
+
+            // Timer Logic
+            app.timer = 20;
+            updateTimerUI();
+
+            if (app.timerIdx) clearInterval(app.timerIdx);
+
+            app.timerIdx = setInterval(() => {
+                app.timer--;
+                updateTimerUI();
+
+                // Host syncs timer occasionally or on events
+                // if(app.isHost && app.timer % 5 === 0) broadcast({type:'SYNC_TIMER', t:app.timer});
+
+                if (app.timer <= 0) {
+                    clearInterval(app.timerIdx);
+                    if (app.isHost && app.roundActive) {
+                        roundTimeOut();
+                    }
+                }
+            }, 1000);
+        }
+
+        function checkEnter(e) {
+            if (e.key === 'Enter') submitWord();
+        }
+
+        function submitWord() {
+            const w = document.getElementById('wordInput').value.trim().toUpperCase();
+            if (!w) return;
+
+            // Basic Client Validation
+            if (!w.startsWith(app.l1) || !w.endsWith(app.l2)) {
+                showToast(`Ha de començar per ${app.l1} i acabar per ${app.l2}`);
+                return;
+            }
+
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('wordInput').disabled = true;
+            app.conn.send({ type: 'WORD', word: w });
+        }
+
+        function validate(isCorrect, isMusical) {
+            const p = app.players.find(x => x.id === app.currentReview.playerId);
+
+            if (isCorrect) {
+                const pts = isMusical ? 200 : 100;
+                if (p) p.score += pts;
+                broadcastUpdate();
+                endRound(`${p.name} guanya ${pts} punts!`);
+            } else {
+                if (p) p.score = Math.max(0, p.score - 50);
+                broadcastUpdate();
+
+                // RESUME ROUND logic
+                document.getElementById('hostValidation').classList.add('hidden');
+                document.getElementById('resultMsg').classList.add('hidden');
+
+                app.roundActive = true;
+                // Broadcast Resume
+                broadcast({ type: 'RESUME_ROUND', t: app.timer });
+
+                // Restart host timer (local logic mirrors client logic in UI, but host controls timeouts)
+                // Actually startRoundUI logic was already doing interval. We cleared it on PAUSE.
+                // Re-start it here for host logic
+                app.timerIdx = setInterval(() => {
+                    app.timer--;
+                    updateTimerUI();
+                    if (app.timer <= 0) {
+                        clearInterval(app.timerIdx);
+                        if (app.isHost) roundTimeOut();
+                    }
+                }, 1000);
+            }
+        }
+
+        function roundTimeOut() {
+            app.roundActive = false;
+            broadcast({ type: 'PAUSE_ROUND' });
+            endRound("Temps Esgotat! Ningú puntua.");
+        }
+
+        function endRound(msg) {
+            document.getElementById('hostValidation').classList.add('hidden');
+            document.getElementById('resultMsg').innerText = msg;
+            document.getElementById('resultMsg').classList.remove('hidden');
+            broadcast({ type: 'ROUND_END', msg });
+
+            setTimeout(() => {
+                switchView('lobbyView');
+                document.getElementById('resultMsg').classList.add('hidden');
+            }, 3000);
+        }
+
+        function updateTimerUI() {
+            document.getElementById('timerNum').innerText = app.timer;
+            document.getElementById('timerFill').style.width = Math.max(0, (app.timer / 20) * 100) + '%';
+        }
+
+        function checkWinner() {
+            const winner = app.players.find(p => p.score >= app.maxScore);
+            if (winner) {
+                if (app.isHost) broadcast({ type: 'GAME_OVER', winnerName: winner.name });
+                showWinnerScreen(winner.name);
+            }
+        }
+
+        function showWinnerScreen(name) {
+            document.getElementById('login').classList.add('hidden');
+            ['lobbyView', 'roundView'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('winnerScreen').classList.remove('hidden');
+            document.getElementById('winnerText').innerText = name;
+        }
+
+        // --- UTILS ---
+        function switchView(id) {
+            ['lobbyView', 'roundView', 'winnerScreen'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+        function updateLobby() {
+            document.getElementById('roomCodeDisp').innerText = app.roomId;
+            document.getElementById('playerList').innerHTML = app.players.map(p =>
+                `<div class="bg-amber-100 px-4 py-2 rounded-xl border border-amber-600 font-bold flex flex-col items-center min-w-[100px] shadow">
+                    <span class="text-sm">${p.name}</span>
+                    <span class="text-2xl font-black text-amber-800">${p.score}</span>
+                 </div>`
+            ).join('');
+        }
+        function removePlayer(id) { app.players = app.players.filter(p => p.id !== id); updateLobby(); }
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.classList.remove('opacity-0');
+            setTimeout(() => t.classList.add('opacity-0'), 2000);
+        }
+
+        window.initHost = initHost;
+        window.initClient = initClient;
+        window.toggleTeacherMode = toggleTeacherMode;
+        window.adjScore = adjScore;
+        window.startRound = startRound;
+        window.submitWord = submitWord;
+        window.validate = validate;
+        window.checkEnter = checkEnter;
+
+    </script>
+</body>
+
+</html>

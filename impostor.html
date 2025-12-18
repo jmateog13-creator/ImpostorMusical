@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joc de l'Impostor Musical (Online + Local)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #fff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Blur reveal effect */
+        .blur-reveal {
+            filter: blur(12px);
+            transition: filter 0.3s ease;
+            user-select: none;
+        }
+
+        .blur-reveal.revealed {
+            filter: blur(0);
+        }
+    </style>
+</head>
+
+<body class="flex flex-col items-center justify-center p-4">
+
+    <!-- App Container -->
+    <div id="app"
+        class="w-full max-w-md bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl p-6 min-h-[600px] flex flex-col relative overflow-hidden transition-all duration-500">
+
+        <!-- Header -->
+        <header class="text-center mb-4 z-10 flex justify-between items-center">
+            <h1
+                class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 truncate">
+                L'Impostor Musical
+            </h1>
+            <div id="connectionStatus"
+                class="hidden text-xs bg-black/30 px-2 py-1 rounded-full text-green-400 flex items-center gap-1">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> Online
+            </div>
+        </header>
+
+        <!-- CONTENT AREA -->
+        <div id="content" class="flex-1 flex flex-col justify-center items-center w-full z-10 overflow-hidden relative">
+            <!-- Dynamic Content Injected Here -->
+        </div>
+
+        <!-- Decorative Circles -->
+        <div
+            class="absolute top-[-50px] left-[-50px] w-32 h-32 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob pointer-events-none">
+        </div>
+        <div
+            class="absolute bottom-[-50px] right-[-50px] w-32 h-32 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob pointer-events-none">
+        </div>
+
+    </div>
+
+    <!-- Error Toast -->
+    <div id="toast"
+        class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-xl z-50 hidden transition-opacity duration-300 pointer-events-none">
+        Error Message
+    </div>
+
+    <script>
+        // --- GAME DATA ---
+        const gameData = {
+            instruments: {
+                title: "Instruments 🎸",
+                words: [
+                    { word: "Guitarra", def: "Corda, dits o pua." }, { word: "Piano", def: "Tecles blanques i negres." },
+                    { word: "Bateria", def: "Tambors i plats." }, { word: "Violí", def: "Petit, corda, arc." },
+                    { word: "Trompeta", def: "Vent, daurat, 3 botons." }, { word: "Flauta", def: "Tub amb forats." },
+                    { word: "Saxòfon", def: "Metall corbat, jazz." }
+                ]
+            },
+            styles: {
+                title: "Estils Musicals 🎵",
+                words: [
+                    { word: "Rock", def: "Guitarres elèctriques." }, { word: "Pop", def: "Enganxosa, ràdio." },
+                    { word: "Reggaeton", def: "Ritme llatí, perrejar." }, { word: "Salsa", def: "Ballar en parella." },
+                    { word: "Música Clàssica", def: "Orquestra, antic." }, { word: "Rap", def: "Parlar ràpid, rimes." }
+                ]
+            },
+            singers: {
+                title: "Cantants 🎤",
+                words: [
+                    { word: "Taylor Swift", def: "La rossa més famosa." }, { word: "Bad Bunny", def: "Conill dolent." },
+                    { word: "Rosalía", def: "Motomami." }, { word: "Quevedo", def: "Veu greu, Quédate." },
+                    { word: "Shakira", def: "Lloba, malucs no menteixen." }
+                ]
+            },
+            actions: {
+                title: "Accions 💃",
+                words: [
+                    { word: "Ballar", def: "Moure el cos." }, { word: "Cantar", def: "Música amb la veu." },
+                    { word: "Aplaudir", def: "Picar de mans." }, { word: "Dirigir", def: "Director d'orquestra." }
+                ]
+            }
+        };
+
+        // --- MIX EVERYTHING FOR RANDOM ---
+        const allWords = [];
+        Object.values(gameData).forEach(cat => allWords.push(...cat.words));
+        gameData.random = { title: "Tot Barrejat 🎲", words: allWords };
+
+        // --- STATE ---
+        const appState = {
+            mode: null, // 'local' | 'host' | 'client'
+            myPeerId: null,
+            peer: null,
+            conn: null, // Client: connection to host
+            connections: [], // Host: list of connections (objects with .peer id)
+            players: [], // { id, name, role, word, def, isMe }
+            myName: "Jugador",
+            gameStatus: 'lobby',
+            category: 'instruments',
+            impostorCount: 1,
+            timer: 0,
+            speaker: "" // Who speaks first
+        };
+
+        const contentDiv = document.getElementById('content');
+
+        // --- UTILS ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        function generateId(length = 4) {
+            return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
+        }
+
+        // --- NAVIGATION ---
+        function init() {
+            renderMainMenu();
+        }
+
+        function renderMainMenu() {
+            contentDiv.innerHTML = `
+                <div class="flex flex-col gap-4 w-full fade-in">
+                    <div class="text-center mb-4">
+                        <p class="text-gray-300 mb-6">Com vols jugar?</p>
+                    </div>
+                    <button onclick="setupOnlineMode('host')" class="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
+                        <i class="fas fa-wifi"></i> CREAR SALA (Profe)
+                    </button>
+                    <button onclick="setupOnlineMode('client')" class="w-full py-4 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
+                        <i class="fas fa-sign-in-alt"></i> UNIR-SE (Alumnes)
+                    </button>
+                    <div class="relative flex py-2 items-center text-xs text-gray-500 uppercase"><div class="flex-grow border-t border-white/10"></div><span class="px-2">No internet?</span><div class="flex-grow border-t border-white/10"></div></div>
+                    <button onclick="startLocalMode()" class="w-full py-3 bg-white/10 border border-white/20 hover:bg-white/20 rounded-xl font-bold text-gray-300 shadow-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-mobile-alt"></i> Mode Local (1 Mòbil)
+                    </button>
+                </div>
+            `;
+        }
+
+        function setupOnlineMode(role) {
+            appState.mode = role;
+            renderNameInput(role);
+        }
+
+        function renderNameInput(role) {
+            const title = role === 'host' ? "Nom del Host" : "El teu Nom";
+
+            contentDiv.innerHTML = `
+                <div class="w-full fade-in">
+                    <button onclick="init()" class="mb-4 text-gray-400 hover:text-white"><i class="fas fa-arrow-left"></i> Enrere</button>
+                    <h2 class="text-xl font-bold mb-4 text-center">${title}</h2>
+                    <input type="text" id="nameInput" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white mb-4 placeholder-gray-500 text-center text-lg focus:border-cyan-400 outline-none" placeholder="Nom..." value="${appState.myName === 'Jugador' ? '' : appState.myName}">
+                    <button onclick="confirmName('${role}')" class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold transition-colors">Continuar</button>
+                </div>
+            `;
+            document.getElementById('nameInput').focus();
+        }
+
+        function confirmName(role) {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) return showToast("Posa un nom!");
+            appState.myName = name;
+            role === 'host' ? initHost() : renderJoinScreen();
+        }
+
+        // --- HOST LOGIC ---
+        function initHost() {
+            if (appState.peer) { // Reuse existing peer
+                renderHostLobby(appState.myPeerId.split('-')[1]);
+                return;
+            }
+
+            renderLoading("Creant sala...");
+            const roomId = generateId(4);
+            appState.myPeerId = "IMPOSTOR-" + roomId;
+            appState.peer = new Peer(appState.myPeerId);
+
+            appState.peer.on('open', (id) => {
+                appState.players = [{ id: id, name: appState.myName, isMe: true }];
+                renderHostLobby(roomId);
+            });
+
+            appState.peer.on('connection', (conn) => {
+                conn.on('data', (d) => handleHostData(conn, d));
+                conn.on('close', () => removePlayer(conn.peer));
+                appState.connections.push(conn);
+            });
+
+            appState.peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') { appState.peer.destroy(); setTimeout(initHost, 500); }
+                else showToast(err.type);
+            });
+        }
+
+        function handleHostData(conn, data) {
+            if (data.type === 'JOIN') {
+                if (appState.gameStatus !== 'lobby') {
+                    conn.send({ type: 'ERROR', msg: 'Partida en curs.' });
+                    return;
+                }
+                const exists = appState.players.find(p => p.id === conn.peer);
+                if (!exists) {
+                    appState.players.push({ id: conn.peer, name: data.name, isMe: false });
+                    broadcastPlayerList();
+                    renderHostLobby(appState.myPeerId.split('-')[1]);
+                }
+            }
+        }
+
+        function removePlayer(id) {
+            appState.players = appState.players.filter(p => p.id !== id);
+            appState.connections = appState.connections.filter(c => c.peer !== id);
+            broadcastPlayerList();
+            if (appState.gameStatus === 'lobby') renderHostLobby(appState.myPeerId.split('-')[1]);
+        }
+
+        function broadcast(msg) {
+            appState.connections.forEach(c => { if (c.open) c.send(msg); });
+        }
+        function broadcastPlayerList() {
+            broadcast({ type: 'PLAYER_LIST', names: appState.players.map(p => p.name) });
+        }
+
+        function renderHostLobby(roomId) {
+            appState.gameStatus = 'lobby';
+            const list = appState.players.map(p =>
+                `<div class="bg-white/5 px-3 py-2 rounded-lg flex justify-between text-sm"><span>${p.name}</span>${p.isMe ? '👑' : ''}</div>`
+            ).join('');
+
+            contentDiv.innerHTML = `
+                <div class="w-full flex flex-col h-full fade-in">
+                    <div class="bg-indigo-600 rounded-2xl p-4 text-center shadow-lg mb-4">
+                        <p class="text-xs uppercase text-indigo-200">CODI SALA</p>
+                        <h1 class="text-5xl font-black text-white font-mono tracking-widest my-1 select-all">${roomId}</h1>
+                    </div>
+                    
+                    <div class="flex-1 bg-black/20 rounded-xl p-3 mb-4 overflow-y-auto custom-scroll">
+                         <div class="mb-2 text-xs text-gray-400 font-bold uppercase">Jugadors (${appState.players.length})</div>
+                         <div class="space-y-1">${list}</div>
+                    </div>
+
+                    <div class="flex gap-2 mb-4">
+                        <div class="flex-1 bg-white/5 p-2 rounded-lg text-center">
+                            <div class="text-[10px] text-gray-400 uppercase">Impostors</div>
+                            <div class="flex justify-center items-center gap-3">
+                                <button onclick="changeImp(-1)" class="w-6 h-6 bg-white/10 rounded">-</button>
+                                <span class="font-bold">${appState.impostorCount}</span>
+                                <button onclick="changeImp(1)" class="w-6 h-6 bg-white/10 rounded">+</button>
+                            </div>
+                        </div>
+                        <div class="flex-[2] bg-cyan-900/40 border border-cyan-500/30 p-2 rounded-lg text-center cursor-pointer hover:bg-cyan-900/60 transition-colors" onclick="toggleCategory()">
+                            <div class="text-[10px] text-cyan-300 uppercase">Temàtica (Clic per canviar)</div>
+                            <div class="font-bold text-md truncate px-1 text-white">${gameData[appState.category].title}</div>
+                        </div>
+                    </div>
+
+                    <button onclick="startOnlineGame()" class="w-full py-4 bg-green-500 hover:bg-green-600 rounded-xl font-bold text-white shadow-lg ${appState.players.length < 3 ? 'opacity-50' : ''}">
+                         ${appState.players.length < 3 ? 'Mínim 3 Jugadors' : 'COMENÇAR JOC!'}
+                    </button>
+                </div>
+            `;
+        }
+
+        function changeImp(d) {
+            let n = appState.impostorCount + d;
+            if (n >= 1 && n < appState.players.length) { appState.impostorCount = n; renderHostLobby(appState.myPeerId.split('-')[1]); }
+        }
+        function toggleCategory() {
+            const keys = Object.keys(gameData);
+            let idx = keys.indexOf(appState.category);
+            appState.category = keys[(idx + 1) % keys.length];
+            renderHostLobby(appState.myPeerId.split('-')[1]);
+        }
+
+        function startOnlineGame() {
+            if (appState.players.length < 3) return;
+
+            // Random speaker
+            appState.speaker = appState.players[Math.floor(Math.random() * appState.players.length)].name;
+
+            const cat = gameData[appState.category];
+            const wordObj = cat.words[Math.floor(Math.random() * cat.words.length)];
+
+            let roles = Array(appState.players.length).fill('civil');
+            let c = 0;
+            while (c < appState.impostorCount) {
+                let r = Math.floor(Math.random() * roles.length);
+                if (roles[r] === 'civil') { roles[r] = 'impostor'; c++; }
+            }
+
+            appState.players.forEach((p, i) => {
+                p.role = roles[i];
+                p.word = wordObj.word;
+                p.def = wordObj.def;
+
+                if (!p.isMe) {
+                    const conn = appState.connections.find(c => c.peer === p.id);
+                    if (conn) conn.send({
+                        type: 'START', role: p.role, word: p.word, def: p.def, speaker: appState.speaker
+                    });
+                }
+            });
+
+            appState.gameStatus = 'playing';
+            renderRoleReveal(appState.players[0], true);
+        }
+
+        // --- CLIENT LOGIC ---
+        function renderJoinScreen() {
+            contentDiv.innerHTML = `
+                <div class="w-full fade-in">
+                    <button onclick="renderMainMenu()" class="mb-4 text-gray-400"><i class="fas fa-arrow-left"></i> Menú</button>
+                    <h2 class="text-xl font-bold mb-6 text-center">Unir-se a Sala</h2>
+                    <input type="text" id="codeIn" class="w-full bg-black/30 border border-white/20 rounded-xl px-4 py-4 text-center text-2xl font-mono uppercase tracking-widest mb-4 outline-none focus:border-cyan-400" placeholder="CODI">
+                    <button onclick="joinRoom()" class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold shadow-lg">ENTRAR</button>
+                </div>
+            `;
+            document.getElementById('codeIn').focus();
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('codeIn').value.trim().toUpperCase();
+            if (code.length < 3) return showToast("Codi invàlid");
+
+            renderLoading("Connectant...");
+            const peer = new Peer();
+            peer.on('open', (id) => {
+                appState.myPeerId = id;
+                const conn = peer.connect("IMPOSTOR-" + code);
+                conn.on('open', () => {
+                    document.getElementById('connectionStatus').classList.remove('hidden');
+                    conn.send({ type: 'JOIN', name: appState.myName });
+                    renderClientLobby();
+                });
+                conn.on('data', clientHandleData);
+                conn.on('close', () => { showToast("Sala tancada"); setTimeout(init, 2000); });
+                conn.on('error', () => { showToast("Error connexió"); renderJoinScreen(); });
+                appState.conn = conn;
+            });
+            appState.peer = peer;
+        }
+
+        function clientHandleData(d) {
+            if (d.type === 'PLAYER_LIST') {
+                const el = document.getElementById('clientList');
+                if (el) el.innerHTML = d.names.map(n => `<div class="text-sm text-gray-400 border-b border-white/5 py-1">${n}</div>`).join('');
+            }
+            if (d.type === 'START') {
+                appState.speaker = d.speaker;
+                renderRoleReveal({ role: d.role, word: d.word, def: d.def }, false);
+            }
+            if (d.type === 'VOTE_PHASE') {
+                renderVotingPhase();
+            }
+            if (d.type === 'RESET') {
+                renderClientLobby();
+            }
+        }
+
+        function renderClientLobby() {
+            contentDiv.innerHTML = `
+                <div class="text-center w-full fade-in flex flex-col items-center h-full justify-center">
+                    <div class="loader mb-6 border-cyan-400"></div>
+                    <h2 class="text-xl font-bold mb-2">Esperant al Profe...</h2>
+                    <p class="text-xs text-gray-400 mb-4">No surtis de la pantalla</p>
+                    <div id="clientList" class="w-full bg-white/5 rounded-xl p-4 max-h-48 overflow-y-auto text-left"></div>
+                </div>
+            `;
+        }
+
+
+        // --- COMMON UX ---
+        function renderRoleReveal(playerData, isHost) {
+            // Updated UX: User must CLICK to reveal
+            contentDiv.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center justify-center fade-in">
+                    ${isHost ? '<div class="absolute top-0 right-0 bg-red-500 text-xs px-2 rounded-bl">HOST</div>' : ''}
+                    
+                    <h2 class="text-2xl font-bold mb-8">El teu Rol és...</h2>
+                    
+                    <div id="secretCard" class="relative w-64 h-64 bg-indigo-900/50 rounded-2xl border border-indigo-400/30 flex items-center justify-center cursor-pointer shadow-2xl transition-transform active:scale-95 group" onclick="toggleSecret()">
+                        
+                        <!-- COVER -->
+                        <div id="cardCover" class="absolute inset-0 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl flex flex-col items-center justify-center z-20">
+                            <i class="fas fa-fingerprint text-6xl text-white/30 mb-4 group-hover:text-white/50 transition-colors"></i>
+                            <p class="text-white font-bold tracking-wider">TOCA PER VEURE</p>
+                            <p class="text-[10px] text-white/50 mt-1">(Mantén secret!)</p>
+                        </div>
+
+                        <!-- CONTENT (HIDDEN) -->
+                        <div class="text-center z-10 p-4 w-full">
+                            ${playerData.role === 'impostor' ? `
+                                <i class="fas fa-user-secret text-6xl text-red-500 mb-2"></i>
+                                <h1 class="text-3xl font-black text-red-500 uppercase mb-2">IMPOSTOR</h1>
+                                <p class="text-xs text-red-200 bg-red-900/50 p-2 rounded">No saps la paraula.<br>Enganya a tothom!</p>
+                            ` : `
+                                <div class="text-cyan-400 text-[10px] font-bold uppercase mb-2 tracking-widest">PARAULA SECRETA</div>
+                                <h1 class="text-3xl font-black text-white mb-4 bg-white/10 p-2 rounded-lg">${playerData.word}</h1>
+                                <div class="bg-black/30 p-2 rounded text-left">
+                                    <p class="text-[10px] text-yellow-500 font-bold mb-1">PISTA:</p>
+                                    <p class="text-xs text-gray-300 italic">"${playerData.def}"</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+
+                    ${isHost ? `
+                        <div class="mt-8 text-center pt-8 border-t border-white/10 w-full">
+                            <button onclick="hostTriggerVote()" class="w-full py-4 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-bold font-lg shadow-lg">
+                                TOTHOM LLEST -> DEBATRE
+                            </button>
+                            <p class="text-[10px] text-gray-500 mt-2">Prem quan tots hagin vist el seu rol.</p>
+                        </div>
+                    `: `
+                        <div class="mt-8 text-center animate-pulse text-gray-500 text-sm">
+                            Esperant que el profe iniciï el debat...
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        let isRevealed = false;
+        function toggleSecret() {
+            const cover = document.getElementById('cardCover');
+            if (!isRevealed) {
+                cover.style.opacity = '0';
+                cover.style.pointerEvents = 'none';
+                isRevealed = true;
+            } else {
+                cover.style.opacity = '1';
+                cover.style.pointerEvents = 'auto';
+                isRevealed = false;
+            }
+        }
+
+        function hostTriggerVote() {
+            if (appState.mode === 'host') broadcast({ type: 'VOTE_PHASE' });
+            renderVotingPhase();
+        }
+
+        function renderVotingPhase() {
+            const isHost = appState.mode === 'host';
+            contentDiv.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center pt-4 fade-in">
+                    <h1 class="text-2xl font-bold mb-1">🗣️ DEBAT</h1>
+                    
+                    <div class="bg-indigo-500/20 px-6 py-3 rounded-xl border border-indigo-500/30 mb-6 text-center w-full">
+                        <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">COMENÇA PARLANT</p>
+                        <p class="text-yellow-300 font-black text-xl animate-pulse">${appState.speaker}</p>
+                    </div>
+
+                    <div class="bg-black/20 p-4 rounded-2xl mb-6 w-full text-center border border-white/5">
+                        <div id="timerDisplay" class="text-5xl font-mono font-bold text-white tracking-wider">02:00</div>
+                    </div>
+
+                    ${isHost ? `
+                        <div class="flex flex-col gap-2 w-full mt-auto">
+                            <button onclick="toggleTimer()" id="timerBtn" class="bg-green-500 py-3 rounded-xl font-bold">Iniciar Temps</button>
+                            <button onclick="revealImpostorsHost()" class="bg-red-500/20 text-red-300 border border-red-500/50 py-3 rounded-xl font-bold">Revelar Impostors</button>
+                            <button onclick="resetGameHost()" class="bg-gray-700 py-3 rounded-xl font-bold mt-2">Nova Partida (Mateix Grup)</button>
+                        </div>
+                        <div id="impReveal" class="hidden mt-4 p-3 bg-red-600 text-white font-bold rounded-lg w-full text-center shadow-lg"></div>
+                    ` : `
+                        <p class="text-center text-gray-500 text-sm mt-4">Mira la pantalla del profe.</p>
+                        <div class="mt-auto w-full text-center text-xs text-gray-600">Partida en curs...</div>
+                    `}
+                </div>
+            `;
+
+            if (isHost) {
+                appState.timer = 120;
+                document.getElementById('timerDisplay').innerText = "02:00";
+            }
+        }
+
+        // --- TIMER & END GAME ---
+        let timerInterval = null;
+        function toggleTimer() {
+            const btn = document.getElementById('timerBtn');
+            if (timerInterval) {
+                clearInterval(timerInterval); timerInterval = null;
+                btn.innerText = "Continuar";
+            } else {
+                btn.innerText = "Pausa";
+                timerInterval = setInterval(() => {
+                    appState.timer--;
+                    const m = Math.floor(appState.timer / 60), s = appState.timer % 60;
+                    document.getElementById('timerDisplay').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                    if (appState.timer <= 0) clearInterval(timerInterval);
+                }, 1000);
+            }
+        }
+
+        function revealImpostorsHost() {
+            const imps = appState.players.filter(p => p.role === 'impostor').map(p => p.name).join(', ');
+            document.getElementById('impReveal').innerText = "👻 IMPOSTORS: " + imps;
+            document.getElementById('impReveal').classList.remove('hidden');
+        }
+
+        function resetGameHost() {
+            broadcast({ type: 'RESET' });
+            renderHostLobby(appState.myPeerId.split('-')[1]);
+        }
+
+        // --- LOCAL MODE ADAPTATION ---
+        function startLocalMode() {
+            appState.mode = 'local';
+            appState.players = [];
+
+            // Just simulate the local setup flow but reusing the "Reveal" UI we just built
+            localStepSetup();
+        }
+
+        function localStepSetup() {
+            // Player Count
+            contentDiv.innerHTML = `
+                <div class="w-full fade-in">
+                     <button onclick="init()" class="mb-4 text-gray-400"><i class="fas fa-arrow-left"></i> Enrere</button>
+                     <h2 class="text-xl font-bold text-center mb-6">Jugadors</h2>
+                     <div class="bg-white/5 p-4 rounded-xl flex justify-between items-center mb-4">
+                        <span>Total</span>
+                        <div class="flex gap-4 items-center">
+                            <button class="bg-white/10 w-8 h-8 rounded" onclick="locAdjP(-1)">-</button>
+                            <span id="lp" class="font-bold">4</span>
+                            <button class="bg-white/10 w-8 h-8 rounded" onclick="locAdjP(1)">+</button>
+                        </div>
+                     </div>
+                     <div class="bg-white/5 p-4 rounded-xl flex justify-between items-center mb-6">
+                        <span class="text-red-300">Impostors</span>
+                         <div class="flex gap-4 items-center">
+                            <button class="bg-white/10 w-8 h-8 rounded" onclick="locAdjI(-1)">-</button>
+                            <span id="li" class="font-bold text-red-300">1</span>
+                            <button class="bg-white/10 w-8 h-8 rounded" onclick="locAdjI(1)">+</button>
+                        </div>
+                     </div>
+                     <button onclick="localNames()" class="w-full py-3 bg-indigo-600 rounded-xl font-bold">Següent</button>
+                </div>
+            `;
+            appState.localP = 4; appState.localI = 1;
+        }
+        function locAdjP(d) { appState.localP = Math.max(3, Math.min(20, appState.localP + d)); if (appState.localI >= appState.localP) appState.localI = appState.localP - 1; document.getElementById('lp').innerText = appState.localP; document.getElementById('li').innerText = appState.localI; }
+        function locAdjI(d) { appState.localI = Math.max(1, Math.min(appState.localP - 1, appState.localI + d)); document.getElementById('li').innerText = appState.localI; }
+
+        function localNames() {
+            let h = '';
+            for (let i = 0; i < appState.localP; i++) h += `<input id="ln${i}" class="w-full bg-white/5 p-2 rounded mb-2 text-white border border-white/10" value="Jugador ${i + 1}">`;
+            contentDiv.innerHTML = `<div class="w-full fade-in flex flex-col h-full"><h2 class="text-center font-bold mb-4">Noms</h2><div class="flex-1 overflow-y-auto custom-scroll mb-4">${h}</div><button onclick="localCat()" class="w-full py-3 bg-indigo-600 rounded-xl font-bold">Temàtica</button></div>`;
+        }
+
+        function localCat() {
+            appState.players = [];
+            for (let i = 0; i < appState.localP; i++) appState.players.push({ name: document.getElementById(`ln${i}`).value, role: 'civil' });
+
+            let h = Object.keys(gameData).map(k => `<button onclick="localStart('${k}')" class="w-full text-left p-3 mb-2 bg-white/5 hover:bg-white/10 rounded">${gameData[k].title}</button>`).join('');
+            contentDiv.innerHTML = `<div class="w-full fade-in flex flex-col h-full"><h2 class="text-center font-bold mb-4">Tria Tema</h2><div class="flex-1 overflow-y-auto custom-scroll">${h}</div></div>`;
+        }
+
+        function localStart(catKey) {
+            const cat = gameData[catKey];
+            const wordObj = cat.words[Math.floor(Math.random() * cat.words.length)];
+            let c = 0;
+            while (c < appState.localI) {
+                let r = Math.floor(Math.random() * appState.players.length);
+                if (appState.players[r].role === 'civil') { appState.players[r].role = 'impostor'; c++; }
+            }
+            appState.players.forEach(p => { p.word = wordObj.word; p.def = wordObj.def; });
+
+            // Pick Random Speaker for Local too
+            appState.speaker = appState.players[Math.floor(Math.random() * appState.players.length)].name;
+
+            appState.localIdx = 0;
+            localLoop();
+        }
+
+        function localLoop() {
+            if (appState.localIdx >= appState.players.length) {
+                // End local setup, go to vote (reusing Host Vote UI, but hiding 'New Game' online button)
+                appState.mode = 'host';
+                renderVotingPhase();
+                // Patch the button text for local replay
+                const newBtn = document.querySelector('button[onclick="resetGameHost()"]');
+                if (newBtn) {
+                    newBtn.innerText = "Jugar una altra vegada";
+                    newBtn.onclick = () => localCat(); // Go back to cat select with same names
+                }
+                return;
+            }
+            const p = appState.players[appState.localIdx];
+            contentDiv.innerHTML = `
+                <div class="text-center w-full fade-in">
+                    <div class="mb-8"><i class="fas fa-mobile-alt text-6xl text-purple-200 animate-bounce"></i></div>
+                    <p class="text-gray-400">Entrega el dispositiu a:</p>
+                    <h1 class="text-4xl font-black text-white mb-8">${p.name}</h1>
+                    <button onclick="localShow()" class="w-full py-4 bg-white text-indigo-900 rounded-xl font-bold text-xl shadow-lg">SÓC JO, VEURE ROL</button>
+                    <p class="text-xs text-gray-500 mt-4"><i class="fas fa-eye-slash"></i> Que ningú miri!</p>
+                </div>
+            `;
+        }
+
+        function localShow() {
+            const p = appState.players[appState.localIdx];
+            renderRoleReveal(p, true); // Reuse UI
+
+            // Replace Host button with Next
+            const hostBtn = document.querySelector('button[onclick="hostTriggerVote()"]');
+            if (hostBtn) hostBtn.remove();
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = "w-full py-4 bg-gray-700 hover:bg-gray-600 rounded-xl font-bold text-lg text-gray-200 mt-4 shadow-lg";
+            nextBtn.innerHTML = 'ENTÈS, AMAGAR <i class="fas fa-check ml-2"></i>';
+            nextBtn.onclick = () => { appState.localIdx++; localLoop(); };
+
+            document.querySelector('#content > div').appendChild(nextBtn);
+            // Quick patch to hide "Host Eyes Only" badge in local
+            const badge = document.querySelector('.absolute.top-0.right-0');
+            if (badge) badge.remove();
+        }
+
+        // Init
+        init();
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>El Gran Repte 🏆</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: #064e3b;
+            color: #ecfdf5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Poker table felt feel */
+        .felt-bg {
+            background-image: radial-gradient(#059669 20%, #064e3b 80%);
+        }
+    </style>
+</head>
+
+<body class="flex flex-col h-full w-full felt-bg text-emerald-50">
+
+    <!-- LOGIN -->
+    <div id="login" class="absolute inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4">
+        <div
+            class="bg-emerald-900 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border-4 border-emerald-700 relative">
+
+            <!-- LOGO -->
+            <div class="text-6xl mb-4">🏆</div>
+            <h1 class="text-3xl font-black mb-1 text-white uppercase tracking-wider">El Gran</h1>
+            <h2 class="text-xl text-yellow-400 font-bold mb-6">Repte</h2>
+
+            <!-- STUDENT FORM (Default) -->
+            <div id="studentForm" class="flex flex-col gap-3">
+                <input id="myName" type="text" placeholder="Nom de l'Equip"
+                    class="w-full bg-emerald-950 border border-emerald-600 rounded-xl p-3 text-white text-center text-xl focus:border-yellow-400 outline-none transition-all placeholder-emerald-700">
+                <input id="joinCode" placeholder="CODI DE SALA"
+                    class="w-full bg-black/30 border border-emerald-600 rounded-xl p-3 text-center uppercase font-mono text-xl focus:border-yellow-400 outline-none placeholder-emerald-700">
+
+                <button onclick="initClient()"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_rgb(6,78,59)] mt-2 transition-all active:translate-y-1 active:shadow-none text-xl">
+                    ENTRAR <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+
+                <button onclick="toggleTeacherMode()"
+                    class="mt-4 text-emerald-500 text-xs hover:text-emerald-300 underline opacity-60 hover:opacity-100 transition-opacity">
+                    Ets el Professor? Clica aquí
+                </button>
+            </div>
+
+            <!-- TEACHER FORM (Hidden) -->
+            <div id="teacherForm" class="hidden flex flex-col gap-3 fade-in">
+                <div class="text-yellow-400 font-bold uppercase text-sm mb-2 border-b border-emerald-700 pb-2">Zona de
+                    Professor</div>
+                <input id="hostName" type="text" value="Professor"
+                    class="w-full bg-emerald-950 border border-emerald-600 rounded-xl p-3 text-white text-center text-xl focus:border-yellow-400 outline-none"
+                    readonly>
+
+                <button onclick="initHost()"
+                    class="w-full bg-yellow-500 hover:bg-yellow-400 text-emerald-950 font-bold py-4 rounded-xl transition-all shadow-[0_4px_0_rgb(161,98,7)] active:translate-y-1 active:shadow-none text-xl">
+                    CREAR NOVA SALA
+                </button>
+
+                <button onclick="toggleTeacherMode()"
+                    class="mt-4 text-emerald-500 text-xs hover:text-emerald-300 flex items-center justify-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Tornar a Alumne
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- GAME UI -->
+    <div id="game" class="hidden flex-col h-full max-w-6xl mx-auto w-full p-2 sm:p-4">
+
+        <!-- HEADER -->
+        <div
+            class="flex justify-between items-center bg-emerald-900/80 p-3 rounded-xl backdrop-blur-sm border border-emerald-700 shadow-lg mb-2 sm:mb-4">
+            <div class="flex items-center gap-3">
+                <div id="roundInfo" class="text-xs uppercase font-bold text-emerald-300">Ronda <span
+                        id="roundDisp">1</span></div>
+            </div>
+            <div class="font-black text-xl sm:text-2xl text-white tracking-widest uppercase text-shadow">El Gran Repte
+            </div>
+            <button onclick="location.reload()" class="text-emerald-400 hover:text-white"><i
+                    class="fas fa-sign-out-alt"></i></button>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div
+            class="flex-1 relative overflow-hidden bg-emerald-900/30 rounded-2xl border border-emerald-800 shadow-inner flex flex-col items-center justify-center p-4">
+
+            <!-- LOBBY -->
+            <div id="lobbyView" class="text-center w-full max-w-md hidden">
+                <div class="text-2xl font-bold mb-4 text-emerald-200">Codi Sala: <span id="roomCodeDisp"
+                        class="font-mono text-yellow-400 bg-black/30 px-3 py-1 rounded select-all"></span></div>
+                <div id="playerList" class="flex flex-wrap justify-center gap-4 mb-8"></div>
+                <div id="hostStartBtn" class="hidden">
+                    <button onclick="startGame()"
+                        class="w-full bg-green-500 hover:bg-green-400 text-emerald-950 text-2xl font-black py-4 rounded-xl shadow-lg transform hover:scale-105 transition-all">
+                        COMENÇAR JOC!
+                    </button>
+                </div>
+                <div id="clientWaitMsg" class="hidden text-emerald-300 animate-pulse text-xl">Esperant al profe...</div>
+            </div>
+
+            <!-- TOPIC SHOWCASE (ALL) -->
+            <div id="topicView"
+                class="hidden text-center w-full max-w-3xl flex flex-col items-center justify-center h-full">
+                <div class="text-emerald-400 uppercase font-bold tracking-widest mb-4 animate-bounce">Tema de la Ronda
+                </div>
+                <div id="topicCard"
+                    class="bg-white text-emerald-950 p-8 rounded-2xl shadow-2xl transform transition-all duration-500 scale-0 origin-center w-full">
+                    <h1 id="topicText" class="text-4xl sm:text-6xl font-black mb-4">?</h1>
+
+                    <!-- Host Only Answer Reveal -->
+                    <div id="hostExamples"
+                        class="hidden mt-6 text-left bg-emerald-100 p-4 rounded-xl border border-emerald-300">
+                        <div class="text-xs font-bold uppercase text-emerald-600 mb-2">Exemples vàlids (Només Profe):
+                        </div>
+                        <p id="topicExamples" class="text-sm font-mono leading-relaxed text-emerald-800"></p>
+                    </div>
+                </div>
+
+                <!-- Host Controls for Bidding Phase -->
+                <div id="hostBidControls"
+                    class="hidden mt-8 w-full max-w-md bg-emerald-950/80 p-4 rounded-xl border border-emerald-700 backdrop-blur-md">
+                    <h3 class="text-yellow-400 font-bold mb-2">Configurar Repte</h3>
+                    <div class="flex gap-2 mb-2">
+                        <select id="bidWinnerSelect"
+                            class="flex-1 bg-emerald-900 border border-emerald-600 rounded-lg p-2 text-white"></select>
+                    </div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-sm font-bold">Respostes promeses:</span>
+                        <input type="number" id="bidAmount" value="3" min="1" max="20"
+                            class="w-16 bg-emerald-900 border border-emerald-600 rounded-lg p-2 text-center text-white font-bold text-xl">
+                    </div>
+                    <button onclick="startChallenge()"
+                        class="w-full bg-yellow-500 text-emerald-950 font-bold py-3 rounded-lg shadow-lg">
+                        ACTIVAR COMPTE ENRERE ⏱️
+                    </button>
+                </div>
+            </div>
+
+            <!-- CHALLENGE ACTIVE (Winner writes, others watch) -->
+            <div id="challengeView" class="hidden w-full max-w-md flex flex-col items-center">
+                <div class="text-6xl font-black text-yellow-400 mb-2 font-mono" id="timerDisp">30</div>
+                <div class="text-xl text-white mb-6">Equip: <span id="challengerName"
+                        class="font-bold text-yellow-300"></span></div>
+
+                <!-- Winner Inputs -->
+                <div id="winnerInputs" class="hidden w-full space-y-2 mb-4">
+                    <!-- Injected Inputs -->
+                </div>
+                <!-- Spectator Msg -->
+                <div id="spectatorMsg" class="hidden text-center text-emerald-300 italic text-2xl animate-pulse">
+                    Estan escrivint...
+                </div>
+
+                <button id="submitBtn" onclick="submitAnswers()"
+                    class="hidden w-full bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl shadow-lg">ENVIAR</button>
+            </div>
+
+            <!-- REVIEW (Host) -->
+            <div id="reviewView" class="hidden w-full max-w-xl flex flex-col h-full">
+                <h2 class="text-3xl font-bold text-center text-white mb-4">Validació del Mestre</h2>
+                <div class="text-center mb-4 text-emerald-300">Han promès <span id="targetDisp"
+                        class="font-bold text-white text-xl"></span> respostes.</div>
+
+                <div id="reviewList" class="flex-1 overflow-y-auto space-y-2 pr-1 mb-4"></div>
+
+                <div id="hostVerdictBtns" class="hidden grid grid-cols-2 gap-4 mt-auto">
+                    <button onclick="verdict(false)"
+                        class="bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-xl shadow-lg">
+                        <i class="fas fa-thumbs-down mr-2"></i> FRACÀS (-Pts)
+                    </button>
+                    <button onclick="verdict(true)"
+                        class="bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg">
+                        <i class="fas fa-thumbs-up mr-2"></i> ÈXIT (+Pts)
+                    </button>
+                </div>
+                <div id="clientReviewMsg" class="hidden text-center text-2xl text-emerald-200 animate-bounce mt-10">
+                    El Mestre està decidint el vostre destí...
+                </div>
+            </div>
+
+            <!-- RANKING -->
+            <div id="rankingView" class="hidden text-center w-full max-w-sm">
+                <h2 class="text-4xl font-black text-yellow-400 mb-6 drop-shadow-md">🏆 Puntuacions</h2>
+                <div id="finalScores" class="bg-black/20 rounded-xl p-4 space-y-2 mb-6"></div>
+                <button onclick="nextRound()" id="nextRoundBtn"
+                    class="hidden w-full bg-yellow-500 text-black font-bold py-3 rounded-lg mb-2">Següent Ronda</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast"
+        class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl pointer-events-none opacity-0 transition-opacity z-50 font-bold border border-emerald-500">
+        Msg</div>
+
+    <script>
+        // --- DATA ---
+        const TOPICS = [
+            { t: "Instruments de Vent Fusta", e: "Flauta, Clarinet, Oboè, Fagot, Saxòfon, Flautí, Corn anglès..." },
+            { t: "Instruments de Corda Fregada", e: "Violí, Viola, Violoncel, Contrabaix, Viola de gamba..." },
+            { t: "Notes Musicals", e: "Do, Re, Mi, Fa, Sol, La, Si (i sostinguts/bemolls)" },
+            { t: "Figures Rítmiques", e: "Negra, Blanca, Rodona, Corxera, Semicorxera, Fusa, Semifusa" },
+            { t: "Parts de la Guitarra", e: "Claviller, Mànec, Caixa, Cordes, Pont, Trasts, Boca, Clavilles" },
+            { t: "Qualitats del So", e: "Altura (To), Durada, Intensitat, Timbre" },
+            { t: "Signes Musicals", e: "Clau de Sol/Fa, Pentagrama, Línies addicionals, Compàs, Barra final, Diesis..." },
+            { t: "Veus Humanes", e: "Soprano, Mezzosoprano, Contralt, Tenor, Baríton, Baix" },
+            { t: "Famílies de l'Orquestra", e: "Corda, Vent (Fusta/Metall), Percussió" },
+            { t: "Compositors Clàssics", e: "Mozart, Beethoven, Bach, Vivaldi, Chopin, Haydn, Brahms..." },
+            { t: "Cançons de Quevedo", e: "Quédate, Columbia, Playa del Inglés, Punto G, Vista al Mar, Donde quiero estar..." },
+            { t: "Cançons d'Aitana", e: "Las Babys, Mon Amour, Formentera, Vas a quedarte, Mariposas, Teléfono..." },
+            { t: "Cançons de Rosalía", e: "Despechá, Motomami, Bizcochito, Malamente, Saoko, Con Altura..." },
+            { t: "Artistes Top 50 Global", e: "Taylor Swift, Bad Bunny, The Weeknd, Karol G, Olivia Rodrigo, Drake..." },
+            { t: "Estils Urbans", e: "Reggaeton, Trap, Rap, Drill, Hip Hop, R&B, Dancehall" },
+            { t: "Bandes Sonores Disney", e: "Frozen (Suéltalo), Rei Lleó, Aladdin, Encanto, Coco, Mulan, Sirenita..." },
+            { t: "Instruments de Percussió", e: "Tambor, Plats, Triangle, Xilòfon, Bombo, Caixa, Timbales, Maraques..." },
+            { t: "Marques de Tempo", e: "Allegro, Andante, Adagio, Presto, Largo, Vivace, Moderato" },
+            { t: "Cantants Catalans Actuals", e: "The Tyets, Mushkaa, Julieta, Figa Flawas, Oques Grasses, Zoo..." },
+            { t: "Cançons de l'Estiu", e: "Despacito, Waka Waka, Bailando, Aserejé, Macarena, Bimbó, Potra Salvaje..." }
+        ];
+
+        // --- STATE ---
+        const app = {
+            peer: null, conn: null, myId: null, isHost: false, roomId: '', players: [],
+            gameState: 'LOGIN',
+            currentTopic: null,
+            bidWinnerId: null,
+            bidAmount: 0,
+            submittedAnswers: [],
+            round: 1
+        };
+
+        // --- UI UTILS ---
+        function toggleTeacherMode() {
+            const sForm = document.getElementById('studentForm');
+            const tForm = document.getElementById('teacherForm');
+            if (sForm.classList.contains('hidden')) {
+                sForm.classList.remove('hidden');
+                tForm.classList.add('hidden');
+            } else {
+                sForm.classList.add('hidden');
+                tForm.classList.remove('hidden');
+            }
+        }
+
+        // --- SETUP ---
+        function initHost() { setup('host'); }
+        function initClient() { setup('client'); }
+
+        function setup(mode) {
+            app.isHost = (mode === 'host');
+            let name = "";
+
+            if (app.isHost) {
+                name = document.getElementById('hostName').value;
+            } else {
+                name = document.getElementById('myName').value.trim();
+                // Join code is only for client
+            }
+            if (!name && !app.isHost) return showToast("Nom obligatori!");
+
+            app.myName = name;
+
+            document.getElementById('login').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('game').classList.add('flex');
+
+            if (app.isHost) {
+                app.roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                app.peer = new Peer("SUBASTA-" + app.roomId);
+                app.peer.on('open', id => { app.myId = id; updateLobby(); document.getElementById('hostStartBtn').classList.remove('hidden'); });
+                app.peer.on('connection', c => {
+                    c.on('data', d => handleHostData(c, d));
+                    c.on('close', () => removePlayer(c.peer));
+                    app.players.push({ id: c.peer, name: 'Joining...', score: 1000, conn: c }); // Start with 1000 pts
+                });
+            } else {
+                const code = document.getElementById('joinCode').value.trim().toUpperCase();
+                if (code.length < 3) return showToast("Falta el Codi!");
+                app.peer = new Peer();
+                app.peer.on('open', id => {
+                    app.myId = id;
+                    app.conn = app.peer.connect("SUBASTA-" + code);
+                    app.conn.on('open', () => { app.conn.send({ type: 'JOIN', name }); document.getElementById('clientWaitMsg').classList.remove('hidden'); });
+                    app.conn.on('data', handleClientData);
+                });
+            }
+            switchView('lobbyView');
+        }
+
+        // --- DATA HANDLERS ---
+        function handleHostData(conn, data) {
+            const p = app.players.find(x => x.id === conn.peer);
+            if (data.type === 'JOIN') {
+                if (p) p.name = data.name;
+                broadcastUpdate();
+            }
+            if (data.type === 'ANSWERS') {
+                app.submittedAnswers = data.list;
+                goToReview();
+            }
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'UPDATE') { app.players = data.list; updateLobby(); updateRankingRaw(); }
+            if (data.type === 'TOPIC') { app.currentTopic = data.topic; showTopicUI(); }
+            if (data.type === 'CHALLENGE') {
+                app.bidWinnerId = data.winnerId;
+                app.bidAmount = data.amount;
+                startChallengeUI();
+            }
+            if (data.type === 'RESULT') {
+                app.players = data.list;
+                showRankingUI();
+            }
+        }
+
+        function broadcastUpdate() {
+            const cleanList = app.players.map(p => ({ id: p.id, name: p.name, score: p.score }));
+            app.players.forEach(p => { if (p.conn && p.conn.open) p.conn.send({ type: 'UPDATE', list: cleanList }); });
+        }
+
+        function broadcast(msg) {
+            app.players.forEach(p => { if (p.conn && p.conn.open) p.conn.send(msg); });
+        }
+
+        // --- GAME LOGIC ---
+        function startGame() {
+            app.round = 1;
+            nextRound();
+        }
+
+        function nextRound() {
+            const t = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+            app.currentTopic = t;
+
+            if (app.isHost) {
+                const sel = document.getElementById('bidWinnerSelect');
+                sel.innerHTML = app.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                document.getElementById('hostBidControls').classList.remove('hidden');
+                document.getElementById('hostExamples').classList.remove('hidden');
+                document.getElementById('topicExamples').innerText = t.e;
+                broadcast({ type: 'TOPIC', topic: { t: t.t } });
+                showTopicUI();
+            }
+        }
+
+        function startChallenge() {
+            app.bidWinnerId = document.getElementById('bidWinnerSelect').value;
+            app.bidAmount = parseInt(document.getElementById('bidAmount').value);
+            const msg = { type: 'CHALLENGE', winnerId: app.bidWinnerId, amount: app.bidAmount };
+            broadcast(msg);
+            startChallengeUI();
+        }
+
+        function submitAnswers() {
+            const inputs = document.querySelectorAll('.ans-input');
+            const list = Array.from(inputs).map(i => i.value.trim());
+            app.conn.send({ type: 'ANSWERS', list });
+        }
+
+        function verdict(success) {
+            const p = app.players.find(x => x.id === app.bidWinnerId);
+            if (p) {
+                if (success) p.score += (app.bidAmount * 100);
+                else p.score -= (app.bidAmount * 50);
+            }
+            broadcastUpdate();
+            broadcast({ type: 'RESULT', list: app.players.map(p => ({ id: p.id, name: p.name, score: p.score })) });
+            showRankingUI();
+        }
+
+        // --- UI ---
+        function switchView(id) {
+            ['lobbyView', 'topicView', 'challengeView', 'reviewView', 'rankingView'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function updateLobby() {
+            document.getElementById('roomCodeDisp').innerText = app.roomId;
+            document.getElementById('playerList').innerHTML = app.players.map(p =>
+                `<div class="bg-emerald-800 px-4 py-2 rounded-full border border-emerald-500 font-bold flex gap-2">
+                    ${p.name} <span class="bg-black/30 px-2 rounded-full text-yellow-400">${p.score}</span>
+                 </div>`
+            ).join('');
+        }
+
+        function showTopicUI() {
+            switchView('topicView');
+            document.getElementById('topicText').innerText = app.currentTopic.t;
+            setTimeout(() => document.getElementById('topicCard').classList.remove('scale-0'), 100);
+
+            if (!app.isHost) {
+                document.getElementById('hostBidControls').classList.add('hidden');
+                document.getElementById('hostExamples').classList.add('hidden');
+            }
+        }
+
+        function startChallengeUI() {
+            switchView('challengeView');
+            const pName = app.players.find(p => p.id === app.bidWinnerId)?.name || '???';
+            document.getElementById('challengerName').innerText = pName;
+
+            const inputContainer = document.getElementById('winnerInputs');
+            inputContainer.innerHTML = '';
+
+            if (app.myId === app.bidWinnerId) {
+                document.getElementById('spectatorMsg').classList.add('hidden');
+                document.getElementById('submitBtn').classList.remove('hidden');
+                inputContainer.classList.remove('hidden');
+
+                for (let i = 0; i < app.bidAmount; i++) {
+                    inputContainer.innerHTML += `<input type="text" class="ans-input w-full bg-emerald-950/50 border border-emerald-500 rounded p-2 text-white" placeholder="Resposta ${i + 1}">`;
+                }
+            } else {
+                document.getElementById('spectatorMsg').classList.remove('hidden');
+                document.getElementById('submitBtn').classList.add('hidden');
+                inputContainer.classList.add('hidden');
+            }
+
+            let t = 45;
+            const timerEl = document.getElementById('timerDisp');
+            // Clear any prev interval ?? 
+            if (app.timerIdx) clearInterval(app.timerIdx);
+
+            app.timerIdx = setInterval(() => {
+                t--;
+                timerEl.innerText = t;
+                if (t <= 0) {
+                    clearInterval(app.timerIdx);
+                    if (app.myId === app.bidWinnerId) submitAnswers();
+                }
+            }, 1000);
+        }
+
+        function goToReview() {
+            if (app.isHost) {
+                switchView('reviewView');
+                document.getElementById('hostVerdictBtns').classList.remove('hidden');
+                document.getElementById('clientReviewMsg').classList.add('hidden');
+                document.getElementById('targetDisp').innerText = app.bidAmount;
+
+                const list = document.getElementById('reviewList');
+                list.innerHTML = app.submittedAnswers.map(a =>
+                    `<div class="bg-black/20 p-3 rounded text-xl border-b border-emerald-700">${a || '-'}</div>`
+                ).join('');
+            } else {
+                switchView('reviewView'); // Clients can see "Teacher deciding..."
+                document.getElementById('hostVerdictBtns').classList.add('hidden');
+                document.getElementById('clientReviewMsg').classList.remove('hidden');
+                document.getElementById('reviewList').innerHTML = '';
+            }
+        }
+
+        function showRankingUI() {
+            switchView('rankingView');
+            if (app.isHost) document.getElementById('nextRoundBtn').classList.remove('hidden');
+
+            const sorted = [...app.players].sort((a, b) => b.score - a.score);
+            document.getElementById('finalScores').innerHTML = sorted.map((p, i) =>
+                `<div class="flex justify-between bg-black/20 p-3 rounded mb-2 border-l-4 ${i === 0 ? 'border-yellow-400' : 'border-emerald-600'}">
+                    <span>#${i + 1} ${p.name}</span>
+                    <span class="font-bold text-yellow-400 text-xl">${p.score}</span>
+                 </div>`
+            ).join('');
+        }
+
+        function updateRankingRaw() { }
+
+        function removePlayer(id) { app.players = app.players.filter(p => p.id !== id); updateLobby(); }
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.classList.remove('opacity-0');
+            setTimeout(() => t.classList.add('opacity-0'), 2000);
+        }
+
+        window.initHost = initHost;
+        window.initClient = initClient;
+        window.startGame = startGame;
+        window.startChallenge = startChallenge;
+        window.submitAnswers = submitAnswers;
+        window.verdict = verdict;
+        window.nextRound = nextRound;
+        window.toggleTeacherMode = toggleTeacherMode;
+
+    </script>
+</body>
+
+</html>
